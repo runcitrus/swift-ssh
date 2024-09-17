@@ -51,9 +51,9 @@ public class SSH2 {
     public func sessionInit(
         username: String,
         password: String? = nil,
-        privateKey: String? = nil,
+        privateKeyData: String? = nil,
         privateKeyPath: String? = nil,
-        passphrase: String? = nil
+        privateKeyPass: String? = nil
     ) throws {
         self.session = libssh2_session_init_ex(nil, nil, nil, nil)
         guard let session = self.session else {
@@ -65,50 +65,62 @@ public class SSH2 {
             throw SSH2Error.sessionInitFailed
         }
 
-        if let passwordCStr = password?.cString(using: .utf8) {
+        if let value = password {
             let rc = libssh2_userauth_password_ex(
                 session,
                 username,
-                UInt32(username.utf8.count),
-                passwordCStr,
-                UInt32(passwordCStr.count),
+                UInt32(username.count),
+                value,
+                UInt32(value.count),
                 nil
             )
             guard rc == 0 else {
-                throw SSH2Error.authenticationFailed
+                let msg = getLastErrorMessage()
+                throw SSH2Error.authenticationFailed(msg)
             }
-        } else if let privateKeyPathCStr = privateKeyPath?.cString(using: .utf8) {
-            let passphraseCStr = passphrase?.cString(using: .utf8)
-
+        } else if let value = privateKeyPath {
             let rc = libssh2_userauth_publickey_fromfile_ex(
                 session,
                 username,
-                UInt32(username.utf8.count),
+                UInt32(username.count),
                 nil,
-                privateKeyPathCStr,
-                passphraseCStr
+                value,
+                privateKeyPass
             )
             guard rc == 0 else {
-                throw SSH2Error.authenticationFailed
+                let msg = getLastErrorMessage()
+                throw SSH2Error.authenticationFailed(msg)
             }
-        } else if let privateKeyCStr = privateKey?.cString(using: .utf8) {
-            let passphraseCStr = passphrase?.cString(using: .utf8)
-
+        } else if let value = privateKeyData {
             let rc = libssh2_userauth_publickey_frommemory(
                 session,
                 username,
-                Int(username.utf8.count),
+                Int(username.count),
                 nil,
                 0,
-                privateKeyCStr,
-                privateKeyCStr.count,
-                passphraseCStr
+                value,
+                value.count,
+                privateKeyPass
             )
             guard rc == 0 else {
-                throw SSH2Error.authenticationFailed
+                let msg = getLastErrorMessage()
+                throw SSH2Error.authenticationFailed(msg)
             }
         } else {
-            throw SSH2Error.authenticationFailed
+            throw SSH2Error.authenticationFailed("unknown authentication method")
+        }
+    }
+
+    func getLastErrorMessage() -> String {
+        var errmsgPtr: UnsafeMutablePointer<Int8>? = nil
+        var errmsgLen: Int32 = 0
+
+        libssh2_session_last_error(session, &errmsgPtr, &errmsgLen, 0)
+
+        if let value = errmsgPtr {
+            return String(cString: value)
+        } else {
+            return "unknown error"
         }
     }
 
@@ -117,15 +129,17 @@ public class SSH2 {
         let channel = libssh2_channel_open_ex(
             session,
             channelType,
-            UInt32(channelType.utf8.count),
+            UInt32(channelType.count),
             2 * 1024 * 1024,
             32768,
             nil,
             0
         )
         guard channel != nil else {
-            throw SSH2Error.channelOpenFailed
+            let msg = getLastErrorMessage()
+            throw SSH2Error.channelOpenFailed(msg)
         }
+
         return channel!
     }
 

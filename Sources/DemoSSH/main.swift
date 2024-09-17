@@ -6,14 +6,14 @@ func performSSHCommandWithPrivateKey(
     host: String,
     username: String,
     privateKeyPath: String,
-    passphrase: String?,
+    privateKeyPass: String?,
     command: String
 ) throws {
     let ssh = try SSH2(host: host, port: 8022)
     try ssh.sessionInit(
         username: username,
         privateKeyPath: privateKeyPath,
-        passphrase: passphrase
+        privateKeyPass: passphrase
     )
 
     let channel = try ssh.channelOpen()
@@ -66,7 +66,7 @@ do {
         host: "78.128.94.138",
         username: "root",
         privateKeyPath: "/Users/and/.ssh/cesbo_ed25519",
-        passphrase: passphrase,
+        privateKeyPass: passphrase,
         command: "ls -la"
     )
 } catch {
