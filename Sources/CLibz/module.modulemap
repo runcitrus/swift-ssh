@@ -1,0 +1,4 @@
+module CLibz [system] {
+    header "shim.h"
+    export *
+}
