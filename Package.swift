@@ -3,17 +3,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "DemoSSH",
+    name: "SSH2",
     platforms: [
         .macOS(.v14)
     ],
     products: [
+        .library(name: "SSH2", targets: ["SSH2"]),
         .executable(name: "DemoSSH", targets: ["DemoSSH"]),
     ],
     targets: [
-        .executableTarget(
-            name: "DemoSSH",
-            dependencies: ["CLibcrypto", "CLibz", "CLibssh2"],
+        .target(
+            name: "SSH2",
+            dependencies: [
+                "CLibcrypto",
+                "CLibz",
+                "CLibssh2",
+            ],
             cSettings: [
                 .unsafeFlags([
                     "-I/opt/homebrew/opt/openssl/include",
@@ -29,6 +34,10 @@ let package = Package(
                     "-Xlinker", "/opt/homebrew/opt/libssh2/lib/libssh2.a",
                 ]),
             ]
+        ),
+        .executableTarget(
+            name: "DemoSSH",
+            dependencies: ["SSH2", "CLibssh2"]
         ),
         .systemLibrary(
             name: "CLibcrypto",
