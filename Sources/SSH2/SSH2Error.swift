@@ -4,4 +4,5 @@ public enum SSH2Error: Error {
     case sessionInitFailed
     case authenticationFailed(String)
     case channelOpenFailed(String)
+    case execFailed(String)
 }

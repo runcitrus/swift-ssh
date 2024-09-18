@@ -6,8 +6,24 @@ public class SSH2 {
     var session: OpaquePointer?
     var timeout: Int = 10
 
+    public static func libInit() {
+        libssh2_init(0)
+    }
+
+    public static func libExit() {
+        libssh2_exit()
+    }
+
     deinit {
-        close()
+        sessionClose()
+        socketClose()
+    }
+
+    func socketClose() {
+        if sock >= 0 {
+            Darwin.close(sock)
+            sock = -1
+        }
     }
 
     public init(
@@ -77,16 +93,11 @@ public class SSH2 {
         throw SSH2Error.connectFailed(msg)
     }
 
-    public func close() {
+    func sessionClose() {
         if let session = self.session {
             libssh2_session_disconnect_ex(session, SSH_DISCONNECT_BY_APPLICATION, "Bye", "")
             libssh2_session_free(session)
             self.session = nil
-        }
-
-        if sock >= 0 {
-            Darwin.close(sock)
-            sock = -1
         }
     }
 
@@ -169,7 +180,12 @@ public class SSH2 {
         }
     }
 
-    public func channelOpen() throws -> OpaquePointer {
+    func channelClose(_ channel: OpaquePointer) {
+        libssh2_channel_close(channel)
+        libssh2_channel_free(channel)
+    }
+
+    func channelOpen() throws -> OpaquePointer {
         let channelType = "session"
         let channel = libssh2_channel_open_ex(
             session,
@@ -188,8 +204,48 @@ public class SSH2 {
         return channel!
     }
 
-    public func channelClose(_ channel: OpaquePointer) {
-        libssh2_channel_close(channel)
-        libssh2_channel_free(channel)
+    public func exec(_ command: String) throws -> (stdout: Data?, stderr: Data?) {
+        let channel = try channelOpen()
+        defer {
+            channelClose(channel)
+        }
+
+        let request = "exec"
+        let rc = libssh2_channel_process_startup(
+            channel,
+            request,
+            UInt32(request.count),
+            command,
+            UInt32(command.count)
+        )
+        guard rc == 0 else {
+            let msg = getLastErrorMessage()
+            throw SSH2Error.execFailed(msg)
+        }
+
+        var stdout = Data()
+
+        let bufferSize = 0x4000
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer {
+            buffer.deallocate()
+        }
+
+        while true {
+            let stdoutSize = libssh2_channel_read_ex(channel, 0, buffer, bufferSize)
+
+            if stdoutSize > 0 {
+                stdout.append(buffer, count: stdoutSize)
+            } else if stdoutSize == 0 {
+                break // EOF
+            } else if stdoutSize == LIBSSH2_ERROR_EAGAIN {
+                continue
+            } else {
+                let msg = getLastErrorMessage()
+                throw SSH2Error.execFailed(msg)
+            }
+        }
+
+        return (stdout: stdout, stderr: nil)
     }
 }
