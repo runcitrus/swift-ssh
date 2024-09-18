@@ -2,14 +2,15 @@ import Foundation
 import SSH2
 import CLibssh2
 
-func performSSHCommandWithPrivateKey(
+func exec(
     host: String,
+    port: Int32 = 22,
     username: String,
     privateKeyPath: String,
     privateKeyPass: String?,
     command: String
 ) throws {
-    let ssh = try SSH2(host: host, port: 8022)
+    let ssh = try SSH2(host, port: port)
     try ssh.sessionInit(
         username: username,
         privateKeyPath: privateKeyPath,
@@ -50,20 +51,21 @@ func performSSHCommandWithPrivateKey(
     ssh.close()
 }
 
-func requestPassphrase() -> String? {
-    if let passphrase = getpass("enter your passphrase: ") {
+func requestPassphrase(_ msg: String) -> String? {
+    if let passphrase = getpass(msg) {
         return String(cString: passphrase)
     }
     return nil
 }
 
-let passphrase = requestPassphrase()
+let passphrase = requestPassphrase("enter your passphrase: ")
 
 libssh2_init(0)
 
 do {
-    try performSSHCommandWithPrivateKey(
-        host: "78.128.94.138",
+    try exec(
+        host: "bg.cesbo.com",
+        port: 8022,
         username: "root",
         privateKeyPath: "/Users/and/.ssh/cesbo_ed25519",
         privateKeyPass: passphrase,
