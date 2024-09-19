@@ -45,7 +45,7 @@ class Channel {
         }
     }
 
-    func read(_ stream: Pipe) throws {
+    private func read(_ stream: Pipe, id: Int32) throws {
         let size = 0x4000
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
         defer {
@@ -53,7 +53,7 @@ class Channel {
         }
 
         while true {
-            let rc = libssh2_channel_read_ex(rawPointer, 0, buffer, size)
+            let rc = libssh2_channel_read_ex(rawPointer, id, buffer, size)
 
             if rc > 0 {
                 let data = Data(bytes: buffer, count: rc)
@@ -67,6 +67,14 @@ class Channel {
                 throw SSH2Error.channelReadFailed(msg)
             }
         }
+    }
+
+    func readStdout(_ stream: Pipe) throws {
+        try read(stream, id: 0)
+    }
+
+    func readStderr(_ stream: Pipe) throws {
+        try read(stream, id: SSH_EXTENDED_DATA_STDERR)
     }
 
     func write(_ data: Data) throws {

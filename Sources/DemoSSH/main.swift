@@ -46,11 +46,8 @@ func exec(
 
     let stdin = Pipe()
     Task {
-        let data = "date\n".data(using: .utf8)!
-        for _ in 0..<5 {
-            stdin.fileHandleForWriting.write(data)
-            try await Task.sleep(for: .seconds(1))
-        }
+        let data = "echo \"1\" >&1; echo \"2\" >&2; echo \"3\" >&1; echo \"4\" >&2".data(using: .utf8)!
+        stdin.fileHandleForWriting.write(data)
         stdin.fileHandleForWriting.closeFile()
     }
 
@@ -58,11 +55,26 @@ func exec(
     stdout.fileHandleForReading.readabilityHandler = {
         let data: Data = $0.availableData
         if data.count > 0 {
+            print("stdout:", terminator: "")
             print(String(data: data, encoding: .utf8)!, terminator: "")
         }
     }
 
-    try ssh.exec("/bin/sh -s", stdin: stdin, stdout: stdout)
+    let stderr = Pipe()
+    stderr.fileHandleForReading.readabilityHandler = {
+        let data: Data = $0.availableData
+        if data.count > 0 {
+            print("stderr:", terminator: "")
+            print(String(data: data, encoding: .utf8)!, terminator: "")
+        }
+    }
+
+    try ssh.exec(
+        "/bin/sh -s",
+        stdin: stdin,
+        stdout: stdout,
+        stderr: stderr
+    )
 }
 
 func main() async {
