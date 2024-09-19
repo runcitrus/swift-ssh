@@ -102,7 +102,7 @@ class Channel {
         }
     }
 
-    func writePipe(_ stream: Pipe) {
+    func writeStream(_ stream: Pipe) {
         stream.fileHandleForReading.readabilityHandler = {
             let data: Data = $0.availableData
 

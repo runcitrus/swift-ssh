@@ -13,7 +13,7 @@ public extension SSH2 {
         try channel.process(command, request: "exec")
 
         if let stdin = stdin {
-            channel.writePipe(stdin)
+            channel.writeStream(stdin)
         }
 
         let stdout = try channel.read()
