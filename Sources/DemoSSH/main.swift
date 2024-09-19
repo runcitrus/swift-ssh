@@ -32,10 +32,10 @@ func exec(
                 switch auth {
                 case .password:
                     throw SSH2Error.authFailed(code, msg)
-                case .key(let value, _):
+                case .privateKey(let key, _):
                     if code == -16 {
                         let passphrase = requestPassphrase("enter your passphrase: ")
-                        auth = SSH2AuthMethod.key(value, passphrase)
+                        auth = .privateKey(key, passphrase)
                         continue
                     } else {
                         throw SSH2Error.authFailed(code, msg)
@@ -67,7 +67,7 @@ do {
         host: "bg.cesbo.com",
         port: 8022,
         username: "root",
-        auth: SSH2AuthMethod.key(key),
+        auth: SSH2AuthMethod.privateKey(key),
         command: "ls -la"
     )
 } catch {

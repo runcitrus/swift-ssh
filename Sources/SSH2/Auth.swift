@@ -2,7 +2,7 @@ import CLibssh2
 
 public enum SSH2AuthMethod {
     case password(String)
-    case key(String, String? = nil)
+    case privateKey(String, String? = nil)
 }
 
 public extension SSH2 {
@@ -11,7 +11,7 @@ public extension SSH2 {
         _ method: SSH2AuthMethod
     ) throws {
         switch method {
-        case .key(let key, let passphrase):
+        case .privateKey(let key, let passphrase):
             let rc = libssh2_userauth_publickey_frommemory(
                 session,
                 username,
