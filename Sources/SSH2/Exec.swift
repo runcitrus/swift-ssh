@@ -2,11 +2,23 @@ import Foundation
 import CLibssh2
 
 public extension SSH2 {
-    func exec(_ command: String) throws -> (stdout: Data?, stderr: Data?) {
+    func exec(
+        _ command: String,
+        stdin: Pipe? = nil
+    ) async throws -> (
+        stdout: Data?,
+        stderr: Data?
+    ) {
         let channel = try Channel(session.rawPointer)
-
         try channel.process(command, request: "exec")
-        let stdout = try channel.read()
+
+        if let stdin = stdin {
+            Task {
+                try await channel.writePipe(stdin)
+            }
+        }
+
+        let stdout = try await channel.read()
 
         return (stdout: stdout, stderr: nil)
     }
