@@ -22,17 +22,13 @@ public class SSH2 {
         _ host: String,
         port: Int32 = 22,
         username: String = "root",
-        password: String? = nil,
-        key: String? = nil,
-        passphrase: String? = nil
+        auth: SSH2AuthMethod? = nil
     ) throws {
         try socketConnect(host, port)
         try sessionOpen()
-        try authenticate(
-            username,
-            password: password,
-            key: key,
-            passphrase: passphrase
-        )
+
+        if let auth = auth {
+            try authenticate(username, auth)
+        }
     }
 }

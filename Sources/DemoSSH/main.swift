@@ -5,16 +5,14 @@ func exec(
     host: String,
     port: Int32 = 22,
     username: String,
-    key: String,
-    passphrase: String?,
+    auth: SSH2AuthMethod? = nil,
     command: String
 ) throws {
     let ssh = try SSH2(
         host,
         port: port,
         username: username,
-        key: key,
-        passphrase: passphrase
+        auth: auth
     )
 
     let (stdout, _) = try ssh.exec(command)
@@ -48,8 +46,7 @@ do {
         host: "bg.cesbo.com",
         port: 8022,
         username: "root",
-        key: key,
-        passphrase: passphrase,
+        auth: SSH2AuthMethod.key(key, passphrase),
         command: "ls -la"
     )
 } catch {
