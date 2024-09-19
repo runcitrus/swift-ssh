@@ -1,7 +1,13 @@
 import CLibssh2
 
-extension SSH2 {
-    func socketConnect(_ host: String, _ port: Int32) throws {
+class Socket {
+    public var fd: Int32
+
+    deinit {
+        Darwin.close(fd)
+    }
+
+    init(_ host: String, _ port: Int32, timeout: Int = 10) throws {
         var hints = Darwin.addrinfo()
         hints.ai_family = AF_UNSPEC
         hints.ai_socktype = SOCK_STREAM
@@ -22,23 +28,25 @@ extension SSH2 {
 
         var timeoutStruct = Darwin.timeval(tv_sec: timeout, tv_usec: 0)
 
+        var fd: Int32 = -1
+
         for info in sequence(first: addr, next: { $0?.pointee.ai_next }) {
             guard let info else {
                 continue
             }
 
-            sock = Darwin.socket(
+            fd = Darwin.socket(
                 info.pointee.ai_family,
                 info.pointee.ai_socktype,
                 info.pointee.ai_protocol
             )
-            guard sock >= 0 else {
+            guard fd >= 0 else {
                 let msg = String(cString: strerror(errno))
                 throw SSH2Error.connectFailed(msg)
             }
 
             setsockopt(
-                sock,
+                fd,
                 SOL_SOCKET,
                 SO_SNDTIMEO,
                 &timeoutStruct,
@@ -46,29 +54,24 @@ extension SSH2 {
             )
 
             setsockopt(
-                sock,
+                fd,
                 SOL_SOCKET,
                 SO_RCVTIMEO,
                 &timeoutStruct,
                 socklen_t(MemoryLayout<timeval>.size)
             )
 
-            if Darwin.connect(sock, info.pointee.ai_addr, info.pointee.ai_addrlen) == 0 {
+            if Darwin.connect(fd, info.pointee.ai_addr, info.pointee.ai_addrlen) == 0 {
+                self.fd = fd
                 return
             }
         }
+
+        // catch error before closing the socket
         let msg = String(cString: strerror(errno))
 
-        Darwin.close(sock)
-        sock = -1
+        Darwin.close(fd)
 
         throw SSH2Error.connectFailed(msg)
-    }
-
-    func socketClose() {
-        if sock >= 0 {
-            Darwin.close(sock)
-            sock = -1
-        }
     }
 }

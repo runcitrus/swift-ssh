@@ -1,7 +1,7 @@
 import CLibssh2
 
 public class SSH2 {
-    var sock: Int32 = -1
+    var sock: Socket
     var session: OpaquePointer?
     var timeout: Int = 10
 
@@ -15,14 +15,13 @@ public class SSH2 {
 
     deinit {
         sessionClose()
-        socketClose()
     }
 
     public init(
         _ host: String,
         _ port: Int32 = 22
     ) throws {
-        try socketConnect(host, port)
+        sock = try Socket(host, port, timeout: timeout)
         try sessionOpen()
     }
 }

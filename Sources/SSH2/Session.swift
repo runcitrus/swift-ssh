@@ -10,7 +10,7 @@ extension SSH2 {
         libssh2_session_set_timeout(session, timeout * 1000)
         libssh2_session_banner_set(session, "SSH-2.0-libssh2_Citrus.app")
 
-        let rc = libssh2_session_handshake(session, sock)
+        let rc = libssh2_session_handshake(session, sock.fd)
         guard rc == 0 else {
             throw SSH2Error.sessionInitFailed
         }
