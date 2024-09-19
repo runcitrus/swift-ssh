@@ -6,7 +6,9 @@ public enum SSH2Error: Error {
     case sessionInitFailed
     case authFailed(Int32, String)
     case channelOpenFailed(String)
-    case execFailed(String)
+    case channelProcessFailed(String)
+    case channelReadFailed(String)
+    case channelWriteFailed(String)
 }
 
 func getLastErrorMessage(_ session: OpaquePointer) -> String {
