@@ -5,15 +5,16 @@ func exec(
     host: String,
     port: Int32 = 22,
     username: String,
-    privateKeyPath: String,
-    privateKeyPass: String?,
+    key: String,
+    passphrase: String?,
     command: String
 ) throws {
-    let ssh = try SSH2(host, port: port)
-    try ssh.sessionInit(
+    let ssh = try SSH2(
+        host,
+        port: port,
         username: username,
-        privateKeyPath: privateKeyPath,
-        privateKeyPass: passphrase
+        key: key,
+        passphrase: passphrase
     )
 
     let (stdout, _) = try ssh.exec(command)
@@ -38,12 +39,17 @@ let passphrase = requestPassphrase("enter your passphrase: ")
 SSH2.libInit()
 
 do {
+    let key = try String(
+        contentsOfFile: "/Users/and/.ssh/cesbo_ed25519",
+        encoding: .utf8
+    )
+
     try exec(
         host: "bg.cesbo.com",
         port: 8022,
         username: "root",
-        privateKeyPath: "/Users/and/.ssh/cesbo_ed25519",
-        privateKeyPass: passphrase,
+        key: key,
+        passphrase: passphrase,
         command: "ls -la"
     )
 } catch {
