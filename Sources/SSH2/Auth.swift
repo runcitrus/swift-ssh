@@ -23,7 +23,7 @@ public extension SSH2 {
                 passphrase
             )
             guard rc == 0 else {
-                let msg = getLastErrorMessage()
+                let msg = getLastErrorMessage(session.rawPointer)
                 throw SSH2Error.authFailed(rc, msg)
             }
         case .password(let password):
@@ -36,7 +36,7 @@ public extension SSH2 {
                 nil
             )
             guard rc == 0 else {
-                let msg = getLastErrorMessage()
+                let msg = getLastErrorMessage(session.rawPointer)
                 throw SSH2Error.authFailed(rc, msg)
             }
         }

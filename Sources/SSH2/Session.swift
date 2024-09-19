@@ -1,7 +1,7 @@
 import CLibssh2
 
 class Session {
-    public var rawPointer: OpaquePointer
+    public let rawPointer: OpaquePointer
 
     deinit {
         libssh2_session_disconnect_ex(rawPointer, SSH_DISCONNECT_BY_APPLICATION, "Bye", "")

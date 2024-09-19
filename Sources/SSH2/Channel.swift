@@ -1,10 +1,18 @@
 import CLibssh2
 
-extension SSH2 {
-    func channelOpen() throws -> OpaquePointer {
+class Channel {
+    public let rawPointer: OpaquePointer
+
+    deinit {
+        libssh2_channel_close(rawPointer)
+        libssh2_channel_free(rawPointer)
+    }
+
+    init(_ session: OpaquePointer) throws {
         let channelType = "session"
+
         let channel = libssh2_channel_open_ex(
-            session.rawPointer,
+            session,
             channelType,
             UInt32(channelType.count),
             2 * 1024 * 1024,
@@ -12,16 +20,11 @@ extension SSH2 {
             nil,
             0
         )
-        guard channel != nil else {
-            let msg = getLastErrorMessage()
+        guard let channel else {
+            let msg = getLastErrorMessage(session)
             throw SSH2Error.channelOpenFailed(msg)
         }
 
-        return channel!
-    }
-
-    func channelClose(_ channel: OpaquePointer) {
-        libssh2_channel_close(channel)
-        libssh2_channel_free(channel)
+        rawPointer = channel
     }
 }
