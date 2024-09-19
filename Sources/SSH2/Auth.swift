@@ -5,8 +5,8 @@ public enum SSH2AuthMethod {
     case key(String, String? = nil)
 }
 
-extension SSH2 {
-    func authenticate(
+public extension SSH2 {
+    func auth(
         _ username: String,
         _ method: SSH2AuthMethod
     ) throws {
@@ -24,7 +24,7 @@ extension SSH2 {
             )
             guard rc == 0 else {
                 let msg = getLastErrorMessage()
-                throw SSH2Error.authenticationFailed(msg)
+                throw SSH2Error.authFailed(rc, msg)
             }
         case .password(let password):
             let rc = libssh2_userauth_password_ex(
@@ -37,7 +37,7 @@ extension SSH2 {
             )
             guard rc == 0 else {
                 let msg = getLastErrorMessage()
-                throw SSH2Error.authenticationFailed(msg)
+                throw SSH2Error.authFailed(rc, msg)
             }
         }
     }

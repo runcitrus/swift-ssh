@@ -20,15 +20,9 @@ public class SSH2 {
 
     public init(
         _ host: String,
-        port: Int32 = 22,
-        username: String = "root",
-        auth: SSH2AuthMethod? = nil
+        _ port: Int32 = 22
     ) throws {
         try socketConnect(host, port)
         try sessionOpen()
-
-        if let auth = auth {
-            try authenticate(username, auth)
-        }
     }
 }

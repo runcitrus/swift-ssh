@@ -1,6 +1,19 @@
 import Foundation
 import SSH2
 
+SSH2.libInit()
+
+defer {
+    SSH2.libExit()
+}
+
+func requestPassphrase(_ msg: String) -> String? {
+    if let passphrase = getpass(msg) {
+        return String(cString: passphrase)
+    }
+    return nil
+}
+
 func exec(
     host: String,
     port: Int32 = 22,
@@ -8,12 +21,31 @@ func exec(
     auth: SSH2AuthMethod? = nil,
     command: String
 ) throws {
-    let ssh = try SSH2(
-        host,
-        port: port,
-        username: username,
-        auth: auth
-    )
+    let ssh = try SSH2(host, port)
+
+    if var auth = auth {
+        while true {
+            do {
+                try ssh.auth(username, auth)
+                break
+            } catch SSH2Error.authFailed(let code, let msg) {
+                switch auth {
+                case .password:
+                    throw SSH2Error.authFailed(code, msg)
+                case .key(let value, _):
+                    if code == -16 {
+                        let passphrase = requestPassphrase("enter your passphrase: ")
+                        auth = SSH2AuthMethod.key(value, passphrase)
+                        continue
+                    } else {
+                        throw SSH2Error.authFailed(code, msg)
+                    }
+                }
+            } catch {
+                throw error
+            }
+        }
+    }
 
     let (stdout, _) = try ssh.exec(command)
     guard let stdout else {
@@ -25,17 +57,6 @@ func exec(
     }
 }
 
-func requestPassphrase(_ msg: String) -> String? {
-    if let passphrase = getpass(msg) {
-        return String(cString: passphrase)
-    }
-    return nil
-}
-
-let passphrase = requestPassphrase("enter your passphrase: ")
-
-SSH2.libInit()
-
 do {
     let key = try String(
         contentsOfFile: "/Users/and/.ssh/cesbo_ed25519",
@@ -46,11 +67,9 @@ do {
         host: "bg.cesbo.com",
         port: 8022,
         username: "root",
-        auth: SSH2AuthMethod.key(key, passphrase),
+        auth: SSH2AuthMethod.key(key),
         command: "ls -la"
     )
 } catch {
     print("error: \(error)")
 }
-
-SSH2.libExit()
