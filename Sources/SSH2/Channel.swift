@@ -39,7 +39,7 @@ class Channel {
             command,
             UInt32(command.count)
         )
-        guard rc == 0 else {
+        guard rc == LIBSSH2_ERROR_NONE else {
             let msg = getLastErrorMessage(sessionRawPointer)
             throw SSH2Error.channelProcessFailed(msg)
         }
@@ -102,8 +102,7 @@ class Channel {
 
     func eof() throws {
         let rc = libssh2_channel_send_eof(rawPointer)
-
-        if rc != 0 {
+        guard rc == LIBSSH2_ERROR_NONE else {
             let msg = getLastErrorMessage(sessionRawPointer)
             throw SSH2Error.channelWriteFailed(msg)
         }

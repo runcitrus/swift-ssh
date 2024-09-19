@@ -27,7 +27,7 @@ class Session {
         }
 
         let rc = libssh2_session_handshake(session, sockfd)
-        guard rc == 0 else {
+        guard rc == LIBSSH2_ERROR_NONE else {
             throw SSH2Error.sessionInitFailed
         }
 

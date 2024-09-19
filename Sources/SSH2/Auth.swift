@@ -22,7 +22,7 @@ public extension SSH2 {
                 key.count,
                 passphrase
             )
-            guard rc == 0 else {
+            guard rc == LIBSSH2_ERROR_NONE else {
                 let msg = getLastErrorMessage(session.rawPointer)
                 throw SSH2Error.authFailed(rc, msg)
             }
@@ -35,7 +35,7 @@ public extension SSH2 {
                 UInt32(password.count),
                 nil
             )
-            guard rc == 0 else {
+            guard rc == LIBSSH2_ERROR_NONE else {
                 let msg = getLastErrorMessage(session.rawPointer)
                 throw SSH2Error.authFailed(rc, msg)
             }
