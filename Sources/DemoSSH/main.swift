@@ -44,14 +44,17 @@ func exec(
         }
     }
 
-    let pipe = Pipe()
-    let inputString = "for i in $(seq 1 5); do date; sleep 1; done"
-    if let inputData = inputString.data(using: .utf8) {
-        pipe.fileHandleForWriting.write(inputData)
-        pipe.fileHandleForWriting.closeFile()
+    let stdin = Pipe()
+    Task {
+        let data = "date\n".data(using: .utf8)!
+        for _ in 0..<5 {
+            stdin.fileHandleForWriting.write(data)
+            try await Task.sleep(for: .seconds(1))
+        }
+        stdin.fileHandleForWriting.closeFile()
     }
 
-    let (stdout, _) = try await ssh.exec("/bin/sh -s", stdin: pipe)
+    let (stdout, _) = try ssh.exec("/bin/sh -s", stdin: stdin)
     guard let stdout else {
         return
     }

@@ -45,7 +45,7 @@ class Channel {
         }
     }
 
-    func read() async throws -> Data {
+    func read() throws -> Data {
         var out = Data()
 
         let size = 0x4000
@@ -70,7 +70,7 @@ class Channel {
         return out
     }
 
-    func write(_ data: Data) async throws {
+    func write(_ data: Data) throws {
         var offset = 0
 
         while offset < data.count {
@@ -93,26 +93,35 @@ class Channel {
         }
     }
 
-    func writePipe(_ stream: Pipe) async throws {
-        let inputHandle = stream.fileHandleForReading
-
-        while true {
-            let data = inputHandle.readData(ofLength: 0x4000)
-            if data.isEmpty {
-                try await eof()
-                break
-            }
-
-            try await write(data)
-        }
-    }
-
-    func eof() async throws {
+    func eof() throws {
         let rc = libssh2_channel_send_eof(rawPointer)
 
         if rc != 0 {
             let msg = getLastErrorMessage(sessionRawPointer)
             throw SSH2Error.channelWriteFailed(msg)
+        }
+    }
+
+    func writePipe(_ stream: Pipe) {
+        stream.fileHandleForReading.readabilityHandler = {
+            let data: Data = $0.availableData
+
+            if data.count > 0 {
+                do {
+                    try self.write(data)
+                } catch {
+                    // TODO: handle write error
+                    $0.readabilityHandler = nil
+                }
+            } else {
+                // EOF
+                do {
+                    try self.eof()
+                } catch {
+                    // TODO: handle eof error
+                }
+                $0.readabilityHandler = nil
+            }
         }
     }
 }

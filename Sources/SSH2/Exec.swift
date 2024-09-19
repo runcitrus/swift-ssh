@@ -5,7 +5,7 @@ public extension SSH2 {
     func exec(
         _ command: String,
         stdin: Pipe? = nil
-    ) async throws -> (
+    ) throws -> (
         stdout: Data?,
         stderr: Data?
     ) {
@@ -13,12 +13,10 @@ public extension SSH2 {
         try channel.process(command, request: "exec")
 
         if let stdin = stdin {
-            Task {
-                try await channel.writePipe(stdin)
-            }
+            channel.writePipe(stdin)
         }
 
-        let stdout = try await channel.read()
+        let stdout = try channel.read()
 
         return (stdout: stdout, stderr: nil)
     }
