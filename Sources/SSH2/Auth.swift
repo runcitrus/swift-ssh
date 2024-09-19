@@ -13,7 +13,7 @@ public extension SSH2 {
         switch method {
         case .privateKey(let key, let passphrase):
             let rc = libssh2_userauth_publickey_frommemory(
-                session,
+                session.rawPointer,
                 username,
                 Int(username.count),
                 nil,
@@ -28,7 +28,7 @@ public extension SSH2 {
             }
         case .password(let password):
             let rc = libssh2_userauth_password_ex(
-                session,
+                session.rawPointer,
                 username,
                 UInt32(username.count),
                 password,

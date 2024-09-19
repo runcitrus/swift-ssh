@@ -14,7 +14,7 @@ extension SSH2 {
         var errmsgPtr: UnsafeMutablePointer<Int8>? = nil
         var errmsgLen: Int32 = 0
 
-        libssh2_session_last_error(session, &errmsgPtr, &errmsgLen, 0)
+        libssh2_session_last_error(session.rawPointer, &errmsgPtr, &errmsgLen, 0)
 
         if let value = errmsgPtr {
             return String(cString: value)

@@ -21,7 +21,11 @@ func exec(
     auth: SSH2AuthMethod? = nil,
     command: String
 ) throws {
-    let ssh = try SSH2(host, port)
+    let ssh = try SSH2(
+        host,
+        port,
+        banner: "SSH-2.0-libssh2_Citrus.app"
+    )
 
     if var auth = auth {
         while true {

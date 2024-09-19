@@ -4,7 +4,7 @@ extension SSH2 {
     func channelOpen() throws -> OpaquePointer {
         let channelType = "session"
         let channel = libssh2_channel_open_ex(
-            session,
+            session.rawPointer,
             channelType,
             UInt32(channelType.count),
             2 * 1024 * 1024,
