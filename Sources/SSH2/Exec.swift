@@ -4,11 +4,9 @@ import CLibssh2
 public extension SSH2 {
     func exec(
         _ command: String,
-        stdin: Pipe? = nil
-    ) throws -> (
-        stdout: Data?,
-        stderr: Data?
-    ) {
+        stdin: Pipe? = nil,
+        stdout: Pipe? = nil
+    ) throws {
         let channel = try Channel(session.rawPointer)
         try channel.process(command, request: "exec")
 
@@ -16,8 +14,8 @@ public extension SSH2 {
             channel.writeStream(stdin)
         }
 
-        let stdout = try channel.read()
-
-        return (stdout: stdout, stderr: nil)
+        if let stdout = stdout {
+            try channel.read(stdout)
+        }
     }
 }

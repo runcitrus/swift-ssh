@@ -54,14 +54,15 @@ func exec(
         stdin.fileHandleForWriting.closeFile()
     }
 
-    let (stdout, _) = try ssh.exec("/bin/sh -s", stdin: stdin)
-    guard let stdout else {
-        return
+    let stdout = Pipe()
+    stdout.fileHandleForReading.readabilityHandler = {
+        let data: Data = $0.availableData
+        if data.count > 0 {
+            print(String(data: data, encoding: .utf8)!, terminator: "")
+        }
     }
 
-    if let output = String(data: stdout, encoding: .utf8) {
-        print(output)
-    }
+    try ssh.exec("/bin/sh -s", stdin: stdin, stdout: stdout)
 }
 
 func main() async {

@@ -45,9 +45,7 @@ class Channel {
         }
     }
 
-    func read() throws -> Data {
-        var out = Data()
-
+    func read(_ stream: Pipe) throws {
         let size = 0x4000
         let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
         defer {
@@ -58,16 +56,17 @@ class Channel {
             let rc = libssh2_channel_read_ex(rawPointer, 0, buffer, size)
 
             if rc > 0 {
-                out.append(buffer, count: rc)
+                let data = Data(bytes: buffer, count: rc)
+                stream.fileHandleForWriting.write(data)
             } else if rc == 0 {
-                break // EOF
+                // EOF
+                stream.fileHandleForWriting.closeFile()
+                break
             } else {
                 let msg = getLastErrorMessage(sessionRawPointer)
                 throw SSH2Error.channelReadFailed(msg)
             }
         }
-
-        return out
     }
 
     func write(_ data: Data) throws {
