@@ -3,7 +3,10 @@ import CLibssh2
 
 class Channel {
     public let rawPointer: OpaquePointer
-    let sessionRawPointer: OpaquePointer
+    private let sessionRawPointer: OpaquePointer
+
+    static let windowDefault: UInt32 = 2 * 1024 * 1024
+    static let packetDefaultSize: UInt32 = 32768
 
     deinit {
         libssh2_channel_close(rawPointer)
@@ -17,8 +20,8 @@ class Channel {
             session,
             channelType,
             UInt32(channelType.count),
-            2 * 1024 * 1024,
-            32768,
+            Channel.windowDefault,
+            Channel.packetDefaultSize,
             nil,
             0
         )
@@ -39,6 +42,7 @@ class Channel {
             command,
             UInt32(command.count)
         )
+
         guard rc == LIBSSH2_ERROR_NONE else {
             let msg = getLastErrorMessage(sessionRawPointer)
             throw SSH2Error.channelProcessFailed(msg)
@@ -47,16 +51,13 @@ class Channel {
 
     private func read(_ stream: Pipe, id: Int32) throws {
         let size = 0x4000
-        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: size)
-        defer {
-            buffer.deallocate()
-        }
+        var buffer = [Int8](repeating: 0, count: size)
 
         while true {
-            let rc = libssh2_channel_read_ex(rawPointer, id, buffer, size)
+            let rc = libssh2_channel_read_ex(rawPointer, id, &buffer, size)
 
             if rc > 0 {
-                let data = Data(bytes: buffer, count: rc)
+                let data = Data(bytes: &buffer, count: rc)
                 stream.fileHandleForWriting.write(data)
             } else if rc == 0 {
                 // EOF
@@ -78,30 +79,45 @@ class Channel {
     }
 
     func write(_ data: Data) throws {
+        if data.count == 0 {
+            return
+        }
+
         var offset = 0
 
         while offset < data.count {
             let size = min(0x4000, data.count - offset)
             let chunk = data.subdata(in: offset..<offset+size)
 
-            let rc = chunk.withUnsafeBytes {
-                guard let ptr = $0.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
-                    return -1
+            let result: Result<Int, SSH2Error> = chunk.withUnsafeBytes {
+                guard let ptr = $0.bindMemory(to: Int8.self).baseAddress else {
+                    let msg = "Failed to bind memory"
+                    let err = SSH2Error.channelWriteFailed(msg)
+                    return .failure(err)
                 }
-                return libssh2_channel_write_ex(rawPointer, 0, ptr, chunk.count)
+
+                let rc = libssh2_channel_write_ex(rawPointer, 0, ptr, chunk.count)
+                if rc >= 0 {
+                    return .success(rc)
+                } else {
+                    let msg = getLastErrorMessage(sessionRawPointer)
+                    let err = SSH2Error.channelWriteFailed(msg)
+                    return .failure(err)
+                }
             }
 
-            if rc > 0 {
+            switch result {
+            case .success(let rc):
                 offset += rc
-            } else {
-                let msg = getLastErrorMessage(sessionRawPointer)
-                throw SSH2Error.channelWriteFailed(msg)
+            case .failure(let err):
+                throw err
             }
         }
     }
 
     func eof() throws {
         let rc = libssh2_channel_send_eof(rawPointer)
+
         guard rc == LIBSSH2_ERROR_NONE else {
             let msg = getLastErrorMessage(sessionRawPointer)
             throw SSH2Error.channelWriteFailed(msg)

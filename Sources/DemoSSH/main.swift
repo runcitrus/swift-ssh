@@ -55,7 +55,6 @@ func exec(
     stdout.fileHandleForReading.readabilityHandler = {
         let data: Data = $0.availableData
         if data.count > 0 {
-            print("stdout:", terminator: "")
             print(String(data: data, encoding: .utf8)!, terminator: "")
         }
     }
@@ -64,7 +63,6 @@ func exec(
     stderr.fileHandleForReading.readabilityHandler = {
         let data: Data = $0.availableData
         if data.count > 0 {
-            print("stderr:", terminator: "")
             print(String(data: data, encoding: .utf8)!, terminator: "")
         }
     }

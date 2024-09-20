@@ -1,7 +1,6 @@
 import CLibssh2
 
 public enum SSH2Error: Error {
-    case initFailed(Int)
     case connectFailed(String)
     case sessionInitFailed
     case authFailed(Int32, String)
