@@ -49,33 +49,50 @@ class Channel {
         }
     }
 
-    private func read(_ stream: Pipe, id: Int32) throws {
+    private func readStream(_ stream: Pipe, id: Int32) throws {
         let size = 0x4000
         var buffer = [Int8](repeating: 0, count: size)
 
-        while true {
-            let rc = libssh2_channel_read_ex(rawPointer, id, &buffer, size)
+        defer {
+            stream.fileHandleForWriting.closeFile()
+        }
 
-            if rc > 0 {
-                let data = Data(bytes: &buffer, count: rc)
+        while true {
+            let result: Result<Int, SSH2Error> = buffer.withUnsafeMutableBufferPointer {
+                guard let ptr = $0.baseAddress else {
+                    let msg = "Failed to bind memory"
+                    let err = SSH2Error.channelReadFailed(msg)
+                    return .failure(err)
+                }
+
+                let rc = libssh2_channel_read_ex(rawPointer, id, ptr, size)
+                if rc >= 0 {
+                    return .success(rc)
+                } else {
+                    let msg = getLastErrorMessage(sessionRawPointer)
+                    let err = SSH2Error.channelReadFailed(msg)
+                    return .failure(err)
+                }
+            }
+
+            switch result {
+            case .success(0):
+                return
+            case .success(let rc):
+                let data = Data(bytes: buffer, count: rc)
                 stream.fileHandleForWriting.write(data)
-            } else if rc == 0 {
-                // EOF
-                stream.fileHandleForWriting.closeFile()
-                break
-            } else {
-                let msg = getLastErrorMessage(sessionRawPointer)
-                throw SSH2Error.channelReadFailed(msg)
+            case .failure(let err):
+                throw err
             }
         }
     }
 
     func readStdout(_ stream: Pipe) throws {
-        try read(stream, id: 0)
+        try readStream(stream, id: 0)
     }
 
     func readStderr(_ stream: Pipe) throws {
-        try read(stream, id: SSH_EXTENDED_DATA_STDERR)
+        try readStream(stream, id: SSH_EXTENDED_DATA_STDERR)
     }
 
     func write(_ data: Data) throws {

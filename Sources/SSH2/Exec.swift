@@ -7,42 +7,27 @@ public extension SSH2 {
         stdin: Pipe? = nil,
         stdout: Pipe? = nil,
         stderr: Pipe? = nil
-    ) throws {
+    ) async throws {
         let channel = try Channel(session.rawPointer)
         try channel.process(command, request: "exec")
-
-        let dispatchGroup = DispatchGroup()
 
         if let stdin = stdin {
             channel.writeStream(stdin)
         }
 
-        if let stdout = stdout {
-            dispatchGroup.enter()
-            DispatchQueue.global().async {
-                do {
-                    try channel.readStdout(stdout)
-                } catch {
-                    // TODO: handle error
-                    print(error)
-                }
-                dispatchGroup.leave()
+        let stdoutTask = Task {
+            if let stdout = stdout {
+                try channel.readStdout(stdout)
             }
         }
 
-        if let stderr = stderr {
-            dispatchGroup.enter()
-            DispatchQueue.global().async {
-                do {
-                    try channel.readStderr(stderr)
-                } catch {
-                    // TODO: handle error
-                    print(error)
-                }
-                dispatchGroup.leave()
+        let stderrTask = Task {
+            if let stderr = stderr {
+                try channel.readStderr(stderr)
             }
         }
 
-        dispatchGroup.wait()
+        try await stdoutTask.value
+        try await stderrTask.value
     }
 }

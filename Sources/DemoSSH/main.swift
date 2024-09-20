@@ -46,7 +46,16 @@ func exec(
 
     let stdin = Pipe()
     Task {
-        let data = "echo \"1\" >&1; echo \"2\" >&2; echo \"3\" >&1; echo \"4\" >&2".data(using: .utf8)!
+        let data = [
+            "echo \"1\" >&1",
+            "sleep 1",
+            "echo \"2\" >&2",
+            "sleep 1",
+            "echo \"3\" >&1",
+            "sleep 1",
+            "echo \"4\" >&2"
+        ].joined(separator: "\n").data(using: .utf8)!
+
         stdin.fileHandleForWriting.write(data)
         stdin.fileHandleForWriting.closeFile()
     }
@@ -67,7 +76,7 @@ func exec(
         }
     }
 
-    try ssh.exec(
+    try await ssh.exec(
         "/bin/sh -s",
         stdin: stdin,
         stdout: stdout,
