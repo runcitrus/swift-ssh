@@ -145,20 +145,15 @@ class Channel {
         stream.fileHandleForReading.readabilityHandler = {
             let data: Data = $0.availableData
 
-            if data.count > 0 {
-                do {
+            do {
+                if !data.isEmpty {
                     try self.write(data)
-                } catch {
-                    // TODO: handle write error
+                } else {
+                    try self.eof()
                     $0.readabilityHandler = nil
                 }
-            } else {
-                // EOF
-                do {
-                    try self.eof()
-                } catch {
-                    // TODO: handle eof error
-                }
+            } catch {
+                // TODO: handle write error
                 $0.readabilityHandler = nil
             }
         }
