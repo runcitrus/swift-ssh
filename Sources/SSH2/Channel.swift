@@ -100,35 +100,35 @@ class Channel {
             return
         }
 
-        var offset = 0
+        let result: Result<Int, SSH2Error> = data.withUnsafeBytes {
+            guard let ptr = $0.baseAddress else {
+                let msg = "Failed to bind memory"
+                let err = SSH2Error.channelWriteFailed(msg)
+                return .failure(err)
+            }
 
-        while offset < data.count {
-            let size = min(0x4000, data.count - offset)
-            let chunk = data.subdata(in: offset..<offset+size)
-
-            let result: Result<Int, SSH2Error> = chunk.withUnsafeBytes {
-                guard let ptr = $0.bindMemory(to: Int8.self).baseAddress else {
-                    let msg = "Failed to bind memory"
-                    let err = SSH2Error.channelWriteFailed(msg)
-                    return .failure(err)
-                }
-
-                let rc = libssh2_channel_write_ex(rawPointer, 0, ptr, chunk.count)
-                if rc >= 0 {
-                    return .success(rc)
-                } else {
+            var offset = 0
+            repeat {
+                let size = min(0x4000, data.count - offset)
+                let rc = libssh2_channel_write_ex(
+                    rawPointer,
+                    0, ptr.advanced(by: offset),
+                    size
+                )
+                if rc == -1 {
                     let msg = getLastErrorMessage(sessionRawPointer)
                     let err = SSH2Error.channelWriteFailed(msg)
                     return .failure(err)
                 }
-            }
 
-            switch result {
-            case .success(let rc):
                 offset += rc
-            case .failure(let err):
-                throw err
-            }
+            } while offset < data.count
+
+            return .success(offset)
+        }
+
+        if case let .failure(err) = result {
+            throw err
         }
     }
 
