@@ -99,7 +99,7 @@ class Channel {
         }
     }
 
-    func write(_ data: Data) throws {
+    func writeData(_ data: Data) throws {
         if data.count == 0 {
             return
         }
@@ -136,30 +136,12 @@ class Channel {
         }
     }
 
-    func eof() throws {
+    func sendEof() throws {
         let rc = libssh2_channel_send_eof(rawPointer)
 
         guard rc == LIBSSH2_ERROR_NONE else {
             let msg = getLastErrorMessage(sessionRawPointer)
             throw SSH2Error.channelWriteFailed(msg)
-        }
-    }
-
-    func writeStream(_ stream: Pipe) {
-        stream.fileHandleForReading.readabilityHandler = {
-            let data: Data = $0.availableData
-
-            do {
-                if !data.isEmpty {
-                    try self.write(data)
-                } else {
-                    try self.eof()
-                    $0.readabilityHandler = nil
-                }
-            } catch {
-                // TODO: handle write error
-                $0.readabilityHandler = nil
-            }
         }
     }
 }
