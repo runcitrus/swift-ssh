@@ -35,12 +35,13 @@ public extension SSH2 {
     }
 
     func exec(
-        _ command: String
+        _ command: String,
+        stdin: Pipe? = nil
     ) throws -> (stdout: String, stderr: String) {
         let stdout = Pipe()
         let stderr = Pipe()
 
-        try exec(command, stdout: stdout, stderr: stderr)
+        try exec(command, stdin: stdin, stdout: stdout, stderr: stderr)
 
         let stdoutData = stdout.fileHandleForReading.readDataToEndOfFile()
         let stderrData = stderr.fileHandleForReading.readDataToEndOfFile()
