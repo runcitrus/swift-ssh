@@ -7,7 +7,7 @@ public extension SSH2 {
         stdin: Pipe? = nil,
         stdout: Pipe,
         stderr: Pipe
-    ) async throws {
+    ) throws {
         let channel = try Channel(session.rawPointer)
         try channel.process(command, request: "exec")
 
@@ -32,5 +32,22 @@ public extension SSH2 {
         }
 
         try channel.read(stdout, stderr)
+    }
+
+    func exec(
+        _ command: String
+    ) throws -> (stdout: String, stderr: String) {
+        let stdout = Pipe()
+        let stderr = Pipe()
+
+        try exec(command, stdout: stdout, stderr: stderr)
+
+        let stdoutData = stdout.fileHandleForReading.readDataToEndOfFile()
+        let stderrData = stderr.fileHandleForReading.readDataToEndOfFile()
+
+        return (
+            stdout: String(data: stdoutData, encoding: .utf8)!,
+            stderr: String(data: stderrData, encoding: .utf8)!
+        )
     }
 }

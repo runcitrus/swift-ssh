@@ -10,16 +10,11 @@ class Session {
 
     init(
         _ sockfd: Int32,
-        banner: String? = nil,
-        timeout: Int?
+        banner: String? = nil
     ) throws {
         let session = libssh2_session_init_ex(nil, nil, nil, nil)
         guard let session else {
             throw SSH2Error.sessionInitFailed
-        }
-
-        if let timeout = timeout {
-            libssh2_session_set_timeout(session, timeout * 1000)
         }
 
         if let banner = banner {
@@ -32,5 +27,9 @@ class Session {
         }
 
         self.rawPointer = session
+    }
+
+    func setTimeout(sec: Int) {
+        libssh2_session_set_timeout(rawPointer, sec * 1000)
     }
 }

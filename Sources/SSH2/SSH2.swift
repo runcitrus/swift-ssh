@@ -15,14 +15,12 @@ public class SSH2 {
     public init(
         _ host: String,
         _ port: Int32 = 22,
-        banner: String? = nil,
-        timeout: Int = 10
+        banner: String? = nil
     ) throws {
-        sock = try Socket(host, port, timeout: timeout)
+        sock = try Socket(host, port)
         session = try Session(
             sock.fd,
-            banner: banner,
-            timeout: timeout
+            banner: banner
         )
     }
 }

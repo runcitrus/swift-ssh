@@ -76,7 +76,7 @@ func exec(
         }
     }
 
-    try await ssh.exec(
+    try ssh.exec(
         "/bin/sh -s",
         stdin: stdin,
         stdout: stdout,
