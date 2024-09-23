@@ -14,9 +14,9 @@ func exec(
     username: String,
     auth: SSH2AuthMethod? = nil
 ) async throws {
-    let ssh = try SSH2(
+    let ssh = try SSH2.connect(
         host,
-        port,
+        port: port,
         banner: "SSH-2.0-libssh2_Citrus.app"
     )
 
@@ -84,12 +84,6 @@ func exec(
 }
 
 func main() async {
-    SSH2.libInit()
-
-    defer {
-        SSH2.libExit()
-    }
-
     do {
         let key = try String(
             contentsOfFile: "/Users/and/.ssh/cesbo_ed25519",

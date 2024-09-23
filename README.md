@@ -10,26 +10,12 @@ brew install openssl zlib libssh2
 
 ## Usage
 
-### Initialization
-
-Initialization function should be called only once on application startup:
-
-```swift
-SSH2.libInit()
-```
-
-Deinitialization function should be called only once before application exit:
-
-```swift
-SSH2.libExit()
-```
-
 ### Connect to a server
 
 ```swift
-let ssh = try SSH2(
+let ssh = try SSH2.connect(
     "example.com",
-    22,
+    port: 22,
     banner: "SSH-2.0-libssh2_Demo"
 )
 ```

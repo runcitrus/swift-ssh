@@ -5,7 +5,7 @@ public enum SSH2AuthMethod {
     case privateKey(String, String? = nil)
 }
 
-public extension SSH2 {
+public extension Session {
     func auth(
         _ username: String,
         _ method: SSH2AuthMethod
@@ -13,7 +13,7 @@ public extension SSH2 {
         switch method {
         case .privateKey(let key, let passphrase):
             let rc = libssh2_userauth_publickey_frommemory(
-                session.rawPointer,
+                rawPointer,
                 username,
                 Int(username.count),
                 nil,
@@ -23,12 +23,12 @@ public extension SSH2 {
                 passphrase
             )
             guard rc == LIBSSH2_ERROR_NONE else {
-                let msg = getLastErrorMessage(session.rawPointer)
+                let msg = getLastErrorMessage()
                 throw SSH2Error.authFailed(rc, msg)
             }
         case .password(let password):
             let rc = libssh2_userauth_password_ex(
-                session.rawPointer,
+                rawPointer,
                 username,
                 UInt32(username.count),
                 password,
@@ -36,7 +36,7 @@ public extension SSH2 {
                 nil
             )
             guard rc == LIBSSH2_ERROR_NONE else {
-                let msg = getLastErrorMessage(session.rawPointer)
+                let msg = getLastErrorMessage()
                 throw SSH2Error.authFailed(rc, msg)
             }
         }

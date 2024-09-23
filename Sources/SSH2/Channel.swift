@@ -2,8 +2,8 @@ import Foundation
 import CLibssh2
 
 public class Channel {
+    private let session: Session
     let rawPointer: OpaquePointer
-    private let sessionRawPointer: OpaquePointer
 
     static let windowDefault: UInt32 = 2 * 1024 * 1024
     static let packetDefaultSize: UInt32 = 32768
@@ -16,11 +16,11 @@ public class Channel {
         libssh2_channel_free(rawPointer)
     }
 
-    init(_ session: OpaquePointer) throws {
+    internal init(_ session: Session) throws {
         let channelType = "session"
 
         let channel = libssh2_channel_open_ex(
-            session,
+            session.rawPointer,
             channelType,
             UInt32(channelType.count),
             Channel.windowDefault,
@@ -29,12 +29,12 @@ public class Channel {
             0
         )
         guard let channel else {
-            let msg = getLastErrorMessage(session)
+            let msg = session.getLastErrorMessage()
             throw SSH2Error.channelOpenFailed(msg)
         }
 
-        rawPointer = channel
-        sessionRawPointer = session
+        self.rawPointer = channel
+        self.session = session
     }
 
     func process(_ command: String, request: String) throws {
@@ -47,7 +47,7 @@ public class Channel {
         )
 
         guard rc == LIBSSH2_ERROR_NONE else {
-            let msg = getLastErrorMessage(sessionRawPointer)
+            let msg = session.getLastErrorMessage()
             throw SSH2Error.channelProcessFailed(msg)
         }
     }
@@ -70,7 +70,7 @@ public class Channel {
         }
 
         guard rc >= 0 else {
-            let msg = getLastErrorMessage(sessionRawPointer)
+            let msg = session.getLastErrorMessage()
             throw SSH2Error.channelReadFailed(msg)
         }
 
@@ -150,7 +150,7 @@ public class Channel {
         }
 
         guard rc >= 0 else {
-            let msg = getLastErrorMessage(sessionRawPointer)
+            let msg = session.getLastErrorMessage()
             throw SSH2Error.channelWriteFailed(msg)
         }
     }
@@ -159,7 +159,7 @@ public class Channel {
         let rc = libssh2_channel_send_eof(rawPointer)
 
         guard rc == LIBSSH2_ERROR_NONE else {
-            let msg = getLastErrorMessage(sessionRawPointer)
+            let msg = session.getLastErrorMessage()
             throw SSH2Error.channelWriteFailed(msg)
         }
     }
