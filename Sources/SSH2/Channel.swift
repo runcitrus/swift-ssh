@@ -8,6 +8,9 @@ class Channel {
     static let windowDefault: UInt32 = 2 * 1024 * 1024
     static let packetDefaultSize: UInt32 = 32768
 
+    static let readBufferSize = 0x4000
+    var readBuffer = [Int8](repeating: 0, count: readBufferSize)
+
     deinit {
         libssh2_channel_close(rawPointer)
         libssh2_channel_free(rawPointer)
@@ -49,51 +52,46 @@ class Channel {
         }
     }
 
-    func read(_ stdout: Pipe, _ stderr: Pipe) throws {
-        let size = 0x4000
-        var buffer = [Int8](repeating: 0, count: size)
+    func read(_ streamId: Int32 = 0) throws -> Data {
+        let rc = readBuffer.withUnsafeMutableBufferPointer {
+            return libssh2_channel_read_ex(
+                rawPointer,
+                streamId,
+                $0.baseAddress,
+                Channel.readBufferSize
+            )
+        }
 
+        guard rc >= 0 else {
+            let msg = getLastErrorMessage(sessionRawPointer)
+            throw SSH2Error.channelReadFailed(msg)
+        }
+
+        return Data(bytes: readBuffer, count: rc)
+    }
+
+    func read(_ stdout: Pipe, _ stderr: Pipe) throws {
         defer {
             stdout.fileHandleForWriting.closeFile()
             stderr.fileHandleForWriting.closeFile()
         }
 
         while true {
-            let stdoutResult: Int = buffer.withUnsafeMutableBufferPointer {
-                return libssh2_channel_read_ex(
-                    rawPointer,
-                    0,
-                    $0.baseAddress,
-                    size
-                )
+            var totalSize = 0
+
+            let stdoutData = try read()
+            if !stdoutData.isEmpty {
+                totalSize += stdoutData.count
+                stdout.fileHandleForWriting.write(stdoutData)
             }
 
-            if stdoutResult > 0 {
-                let data = Data(bytes: buffer, count: stdoutResult)
-                stdout.fileHandleForWriting.write(data)
-            } else if stdoutResult < 0 {
-                let msg = getLastErrorMessage(sessionRawPointer)
-                throw SSH2Error.channelReadFailed(msg)
+            let stderrData = try read(SSH_EXTENDED_DATA_STDERR)
+            if !stderrData.isEmpty {
+                totalSize += stderrData.count
+                stderr.fileHandleForWriting.write(stderrData)
             }
 
-            let stderrResult: Int = buffer.withUnsafeMutableBufferPointer {
-                return libssh2_channel_read_ex(
-                    rawPointer,
-                    SSH_EXTENDED_DATA_STDERR,
-                    $0.baseAddress,
-                    size
-                )
-            }
-
-            if stderrResult > 0 {
-                let data = Data(bytes: buffer, count: stderrResult)
-                stderr.fileHandleForWriting.write(data)
-            } else if stderrResult < 0 {
-                let msg = getLastErrorMessage(sessionRawPointer)
-                throw SSH2Error.channelReadFailed(msg)
-            }
-
-            if stdoutResult == 0 && stderrResult == 0 && libssh2_channel_eof(rawPointer) == 1 {
+            if totalSize == 0 && libssh2_channel_eof(rawPointer) == 1 {
                 break
             }
         }
