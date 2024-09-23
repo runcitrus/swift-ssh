@@ -26,18 +26,15 @@ func exec(
                 try ssh.auth(username, auth)
                 break
             } catch {
-                switch auth {
-                case .password:
-                    throw error
-                case .privateKey(let key, _):
-                    switch error {
-                    case SSH2Error.authFailed(-16, _):
+                if case SSH2Error.authFailed(-16, _) = error {
+                    if case .privateKey(let key, _) = auth {
                         let passphrase = requestPassphrase("enter your passphrase: ")
                         auth = .privateKey(key, passphrase)
-                    default:
-                        throw error
+                        continue
                     }
                 }
+
+                throw error
             }
         }
     }
