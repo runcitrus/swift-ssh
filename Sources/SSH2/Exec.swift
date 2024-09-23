@@ -4,10 +4,8 @@ import CLibssh2
 public extension SSH2 {
     func exec(
         _ command: String,
-        stdin: Pipe? = nil,
-        stdout: Pipe,
-        stderr: Pipe
-    ) throws {
+        stdin: Pipe? = nil
+    ) throws -> Channel {
         let channel = try Channel(session.rawPointer)
         try channel.process(command, request: "exec")
 
@@ -17,7 +15,7 @@ public extension SSH2 {
 
                 do {
                     if !data.isEmpty {
-                        try channel.writeData(data)
+                        try channel.write(data)
                     } else {
                         try channel.sendEof()
                         $0.readabilityHandler = nil
@@ -31,24 +29,6 @@ public extension SSH2 {
             try channel.sendEof()
         }
 
-        try channel.read(stdout, stderr)
-    }
-
-    func exec(
-        _ command: String,
-        stdin: Pipe? = nil
-    ) throws -> (stdout: String, stderr: String) {
-        let stdout = Pipe()
-        let stderr = Pipe()
-
-        try exec(command, stdin: stdin, stdout: stdout, stderr: stderr)
-
-        let stdoutData = stdout.fileHandleForReading.readDataToEndOfFile()
-        let stderrData = stderr.fileHandleForReading.readDataToEndOfFile()
-
-        return (
-            stdout: String(data: stdoutData, encoding: .utf8)!,
-            stderr: String(data: stderrData, encoding: .utf8)!
-        )
+        return channel
     }
 }

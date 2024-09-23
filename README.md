@@ -85,14 +85,16 @@ while true {
 Basic command execution:
 
 ```swift
-let (stdout, stderr) = try ssh.exec("ls -la")
+let channel = try ssh.exec("ls -la")
+let (stdout, stderr) = channel.readAll()
 ```
 
 Command execution with input:
 
 ```swift
 let stdin = Pipe()
-let (stdout, stderr) = try ssh.exec("/bin/sh -s", stdin: stdin)
+let channel = try ssh.exec("/bin/sh -s", stdin: stdin)
+let (stdout, stderr) = channel.readAll()
 ```
 
 With stdout and stderr pipes:
@@ -114,8 +116,8 @@ stderr.fileHandleForReading.readabilityHandler = {
     }
 }
 
-try ssh.exec(
-    "apt update",
+let channel = try ssh.exec("apt update")
+try channel.readAll(
     stdout: stdout,
     stderr: stderr
 )

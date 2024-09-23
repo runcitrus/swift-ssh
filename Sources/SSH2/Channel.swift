@@ -1,8 +1,8 @@
 import Foundation
 import CLibssh2
 
-class Channel {
-    public let rawPointer: OpaquePointer
+public class Channel {
+    let rawPointer: OpaquePointer
     private let sessionRawPointer: OpaquePointer
 
     static let windowDefault: UInt32 = 2 * 1024 * 1024
@@ -52,12 +52,19 @@ class Channel {
         }
     }
 
-    func read(_ streamId: Int32 = 0) throws -> Data {
+    // read reads data from the channel.
+    // 0 to read from stdout.
+    // 1 to read from stderr.
+    public func read(_ streamId: Int32) throws -> Data {
         let rc = readBuffer.withUnsafeMutableBufferPointer {
+            guard let ptr = $0.baseAddress else {
+                return 0
+            }
+
             return libssh2_channel_read_ex(
                 rawPointer,
                 streamId,
-                $0.baseAddress,
+                ptr,
                 Channel.readBufferSize
             )
         }
@@ -70,7 +77,7 @@ class Channel {
         return Data(bytes: readBuffer, count: rc)
     }
 
-    func read(_ stdout: Pipe, _ stderr: Pipe) throws {
+    public func readAll(_ stdout: Pipe, _ stderr: Pipe) throws {
         defer {
             stdout.fileHandleForWriting.closeFile()
             stderr.fileHandleForWriting.closeFile()
@@ -79,13 +86,13 @@ class Channel {
         while true {
             var totalSize = 0
 
-            let stdoutData = try read()
+            let stdoutData = try read(0)
             if !stdoutData.isEmpty {
                 totalSize += stdoutData.count
                 stdout.fileHandleForWriting.write(stdoutData)
             }
 
-            let stderrData = try read(SSH_EXTENDED_DATA_STDERR)
+            let stderrData = try read(1)
             if !stderrData.isEmpty {
                 totalSize += stderrData.count
                 stderr.fileHandleForWriting.write(stderrData)
@@ -97,44 +104,58 @@ class Channel {
         }
     }
 
-    func writeData(_ data: Data) throws {
+    public func readAll() throws -> (stdout: String, stderr: String) {
+        let stdout = Pipe()
+        let stderr = Pipe()
+
+        try readAll(stdout, stderr)
+
+        let stdoutData = stdout.fileHandleForReading.readDataToEndOfFile()
+        let stderrData = stderr.fileHandleForReading.readDataToEndOfFile()
+
+        return (
+            stdout: String(data: stdoutData, encoding: .utf8)!,
+            stderr: String(data: stderrData, encoding: .utf8)!
+        )
+    }
+
+    public func write(_ data: Data) throws {
         if data.count == 0 {
             return
         }
 
-        let result: Result<Int, SSH2Error> = data.withUnsafeBytes {
+        let rc = data.withUnsafeBytes {
             guard let ptr = $0.baseAddress else {
-                let msg = "Failed to bind memory"
-                let err = SSH2Error.channelWriteFailed(msg)
-                return .failure(err)
+                return 0
             }
 
             var offset = 0
+
             repeat {
                 let size = min(0x4000, data.count - offset)
                 let rc = libssh2_channel_write_ex(
                     rawPointer,
-                    0, ptr.advanced(by: offset),
+                    0,
+                    ptr.advanced(by: offset),
                     size
                 )
                 if rc == -1 {
-                    let msg = getLastErrorMessage(sessionRawPointer)
-                    let err = SSH2Error.channelWriteFailed(msg)
-                    return .failure(err)
+                    return -1
                 }
 
                 offset += rc
             } while offset < data.count
 
-            return .success(offset)
+            return offset
         }
 
-        if case let .failure(err) = result {
-            throw err
+        guard rc >= 0 else {
+            let msg = getLastErrorMessage(sessionRawPointer)
+            throw SSH2Error.channelWriteFailed(msg)
         }
     }
 
-    func sendEof() throws {
+    public func sendEof() throws {
         let rc = libssh2_channel_send_eof(rawPointer)
 
         guard rc == LIBSSH2_ERROR_NONE else {
