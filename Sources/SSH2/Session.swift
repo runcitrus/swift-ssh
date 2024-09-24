@@ -81,10 +81,15 @@ public class Session {
     }
 
     internal func wait() async {
-        let dir = libssh2_session_block_directions(rawPointer)
-
         await withCheckedContinuation {
             (continuation: CheckedContinuation<Void, Never>) in
+
+            let dir = libssh2_session_block_directions(rawPointer)
+
+            if dir == 0 {
+                continuation.resume()
+                return
+            }
 
             if (dir & LIBSSH2_SESSION_BLOCK_INBOUND) != 0 {
                 let source = DispatchSource.makeReadSource(
