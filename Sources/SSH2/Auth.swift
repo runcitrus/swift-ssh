@@ -10,19 +10,21 @@ public extension Session {
         _ username: String,
         _ key: String,
         _ passphrase: String?
-    ) throws {
-        let rc = libssh2_userauth_publickey_frommemory(
-            rawPointer,
-            username,
-            Int(username.count),
-            nil,
-            0,
-            key,
-            key.count,
-            passphrase
-        )
-        guard rc == LIBSSH2_ERROR_NONE else {
-            let msg = getLastErrorMessage()
+    ) async throws {
+        let result = await call {
+            libssh2_userauth_publickey_frommemory(
+                self.rawPointer,
+                username,
+                Int(username.count),
+                nil,
+                0,
+                key,
+                key.count,
+                passphrase
+            )
+        }
+
+        if case .failure(let rc, let msg) = result {
             throw SSH2Error.authFailed(rc, msg)
         }
     }
@@ -30,17 +32,19 @@ public extension Session {
     private func passwordAuth(
         _ username: String,
         _ password: String
-    ) throws {
-        let rc = libssh2_userauth_password_ex(
-            rawPointer,
-            username,
-            UInt32(username.count),
-            password,
-            UInt32(password.count),
-            nil
-        )
-        guard rc == LIBSSH2_ERROR_NONE else {
-            let msg = getLastErrorMessage()
+    ) async throws {
+        let result = await call {
+            libssh2_userauth_password_ex(
+                self.rawPointer,
+                username,
+                UInt32(username.count),
+                password,
+                UInt32(password.count),
+                nil
+            )
+        }
+
+        if case .failure(let rc, let msg) = result {
             throw SSH2Error.authFailed(rc, msg)
         }
     }
@@ -48,12 +52,12 @@ public extension Session {
     func auth(
         _ username: String,
         _ method: SSH2AuthMethod
-    ) throws {
+    ) async throws {
         switch method {
         case .privateKey(let key, let passphrase):
-            try privateKeyAuth(username, key, passphrase)
+            try await privateKeyAuth(username, key, passphrase)
         case .password(let password):
-            try passwordAuth(username, password)
+            try await passwordAuth(username, password)
         }
     }
 }

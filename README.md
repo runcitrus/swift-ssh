@@ -13,7 +13,7 @@ brew install openssl zlib libssh2
 ### Connect to a server
 
 ```swift
-let ssh = try SSH2.connect(
+let ssh = try await SSH2.connect(
     "example.com",
     port: 22,
     banner: "SSH-2.0-libssh2_Demo"
@@ -25,7 +25,7 @@ let ssh = try SSH2.connect(
 Password authentication:
 
 ```swift
-try ssh.auth(
+try await ssh.auth(
     "root",
     SSH2AuthMethod.password("password")
 )
@@ -39,7 +39,7 @@ let key = try String(
     encoding: .utf8
 )
 
-try ssh.auth(
+try await ssh.auth(
     "root",
     SSH2AuthMethod.privateKey(key, "passphrase")
 )
@@ -52,7 +52,7 @@ var auth = SSH2AuthMethod.privateKey("...")
 
 while true {
     do {
-        try ssh.auth(username, auth)
+        try await ssh.auth(username, auth)
         break
     } catch {
         switch error {
@@ -71,40 +71,46 @@ while true {
 Basic command execution:
 
 ```swift
-let channel = try ssh.exec("ls -la")
-let (stdout, stderr) = channel.readAll()
+let channel = try await ssh.exec("ls -la")
+let (stdout, stderr) = try await channel.readAll()
 ```
 
-Command execution with input:
+Writing data to the command stdin:
+
+```swift
+let script = "date"
+let data = script.data(using: .utf8)!
+let channel = try await ssh.exec("/bin/sh -s")
+try await channel.writeAll(data)
+```
+
+Writing from file to the command stdin:
 
 ```swift
 let stdin = Pipe()
-let channel = try ssh.exec("/bin/sh -s", stdin: stdin)
-let (stdout, stderr) = channel.readAll()
+let channel = try await ssh.exec("/bin/sh -s")
+try await channel.writeAll(stdin.fileHandleForReading)
 ```
 
-With stdout and stderr pipes:
+Reading data from command with handlers:
 
 ```swift
-let stdout = Pipe()
-stdout.fileHandleForReading.readabilityHandler = {
-    let data: Data = $0.availableData
-    if data.count > 0 {
-        print(String(data: data, encoding: .utf8)!, terminator: "")
+try await channel.readAll(
+    stdoutHandler: {
+        if let text = String(data: $0, encoding: .utf8) {
+            print(text, terminator: "")
+        }
+    },
+    stderrHandler: {
+        if let text = String(data: $0, encoding: .utf8) {
+            print(text, terminator: "")
+        }
     }
-}
-
-let stderr = Pipe()
-stderr.fileHandleForReading.readabilityHandler = {
-    let data: Data = $0.availableData
-    if data.count > 0 {
-        print(String(data: data, encoding: .utf8)!, terminator: "")
-    }
-}
-
-let channel = try ssh.exec("apt update")
-try channel.readAll(
-    stdout: stdout,
-    stderr: stderr
 )
+```
+
+Reading data from command to string:
+
+```swift
+let (stdout, stderr) = try await channel.readAll()
 ```

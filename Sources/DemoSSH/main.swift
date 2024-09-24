@@ -14,7 +14,7 @@ func exec(
     username: String,
     auth: SSH2AuthMethod? = nil
 ) async throws {
-    let ssh = try SSH2.connect(
+    let ssh = try await SSH2.connect(
         host,
         port: port,
         banner: "SSH-2.0-libssh2_Citrus.app"
@@ -23,7 +23,7 @@ func exec(
     if var auth = auth {
         while true {
             do {
-                try ssh.auth(username, auth)
+                try await ssh.auth(username, auth)
                 break
             } catch {
                 if case SSH2Error.authFailed(-16, _) = error {
@@ -55,29 +55,29 @@ func exec(
         stdin.fileHandleForWriting.closeFile()
     }
 
-    let stdout = Pipe()
-    stdout.fileHandleForReading.readabilityHandler = {
-        let data: Data = $0.availableData
-        if data.count > 0 {
-            print(String(data: data, encoding: .utf8)!, terminator: "")
-        }
+    let channel = try await ssh.exec("/bin/sh -s")
+
+    let tw = Task {
+        try await channel.writeAll(stdin.fileHandleForReading)
     }
 
-    let stderr = Pipe()
-    stderr.fileHandleForReading.readabilityHandler = {
-        let data: Data = $0.availableData
-        if data.count > 0 {
-            print(String(data: data, encoding: .utf8)!, terminator: "")
-        }
+    let tr = Task {
+        try await channel.readAll(
+            stdoutHandler: {
+                if let text = String(data: $0, encoding: .utf8) {
+                    print(text, terminator: "")
+                }
+            },
+            stderrHandler: {
+                if let text = String(data: $0, encoding: .utf8) {
+                    print(text, terminator: "")
+                }
+            }
+        )
     }
 
-    let channel = try ssh.exec("/bin/sh -s", stdin: stdin)
-
-    let t1 = Task {
-        try channel.readAll(stdout, stderr)
-    }
-
-    try await t1.value
+    try await tw.value
+    try await tr.value
 }
 
 func main() async {
