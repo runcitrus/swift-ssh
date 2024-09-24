@@ -55,22 +55,6 @@ func exec(
         stdin.fileHandleForWriting.closeFile()
     }
 
-    let stdout = Pipe()
-    stdout.fileHandleForReading.readabilityHandler = {
-        let data: Data = $0.availableData
-        if data.count > 0 {
-            print(String(data: data, encoding: .utf8)!, terminator: "")
-        }
-    }
-
-    let stderr = Pipe()
-    stderr.fileHandleForReading.readabilityHandler = {
-        let data: Data = $0.availableData
-        if data.count > 0 {
-            print(String(data: data, encoding: .utf8)!, terminator: "")
-        }
-    }
-
     let channel = try await ssh.exec("/bin/sh -s")
 
     let tw = Task {
@@ -78,7 +62,18 @@ func exec(
     }
 
     let tr = Task {
-        try await channel.readAll(stdout, stderr)
+        try await channel.readAll(
+            stdoutHandler: {
+                if let text = String(data: $0, encoding: .utf8) {
+                    print(text, terminator: "")
+                }
+            },
+            stderrHandler: {
+                if let text = String(data: $0, encoding: .utf8) {
+                    print(text, terminator: "")
+                }
+            }
+        )
     }
 
     try await tw.value

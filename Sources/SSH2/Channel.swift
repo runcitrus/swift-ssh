@@ -80,25 +80,23 @@ public class Channel {
         }
     }
 
-    public func readAll(_ stdout: Pipe, _ stderr: Pipe) async throws {
-        defer {
-            stdout.fileHandleForWriting.closeFile()
-            stderr.fileHandleForWriting.closeFile()
-        }
-
+    public func readAll(
+        stdoutHandler: @escaping (Data) -> Void,
+        stderrHandler: @escaping (Data) -> Void
+    ) async throws {
         while true {
             var totalSize = 0
 
             let stdoutData = try await read(0)
             if !stdoutData.isEmpty {
                 totalSize += stdoutData.count
-                stdout.fileHandleForWriting.write(stdoutData)
+                stdoutHandler(stdoutData)
             }
 
             let stderrData = try await read(1)
             if !stderrData.isEmpty {
                 totalSize += stderrData.count
-                stderr.fileHandleForWriting.write(stderrData)
+                stderrHandler(stderrData)
             }
 
             if totalSize == 0 && libssh2_channel_eof(rawPointer) == 1 {
@@ -108,18 +106,22 @@ public class Channel {
     }
 
     public func readAll() async throws -> (stdout: String, stderr: String) {
-        let stdout = Pipe()
-        let stderr = Pipe()
+        var stdoutData = Data()
+        var stderrData = Data()
 
-        try await readAll(stdout, stderr)
-
-        let stdoutData = stdout.fileHandleForReading.readDataToEndOfFile()
-        let stderrData = stderr.fileHandleForReading.readDataToEndOfFile()
-
-        return (
-            stdout: String(data: stdoutData, encoding: .utf8)!,
-            stderr: String(data: stderrData, encoding: .utf8)!
+        try await readAll(
+            stdoutHandler: {
+                stdoutData.append($0)
+            },
+            stderrHandler: {
+                stderrData.append($0)
+            }
         )
+
+        let stdoutString = String(data: stdoutData, encoding: .utf8) ?? ""
+        let stderrString = String(data: stderrData, encoding: .utf8) ?? ""
+
+        return (stdout: stdoutString, stderr: stderrString)
     }
 
     // write writes data to the channel.
