@@ -13,7 +13,7 @@ brew install openssl zlib libssh2
 ### Connect to a server
 
 ```swift
-let ssh = try SSH2.connect(
+let ssh = try await SSH2.connect(
     "example.com",
     port: 22,
     banner: "SSH-2.0-libssh2_Demo"
@@ -25,7 +25,7 @@ let ssh = try SSH2.connect(
 Password authentication:
 
 ```swift
-try ssh.auth(
+try await ssh.auth(
     "root",
     SSH2AuthMethod.password("password")
 )
@@ -39,7 +39,7 @@ let key = try String(
     encoding: .utf8
 )
 
-try ssh.auth(
+try await ssh.auth(
     "root",
     SSH2AuthMethod.privateKey(key, "passphrase")
 )
@@ -52,7 +52,7 @@ var auth = SSH2AuthMethod.privateKey("...")
 
 while true {
     do {
-        try ssh.auth(username, auth)
+        try await ssh.auth(username, auth)
         break
     } catch {
         switch error {
@@ -71,16 +71,17 @@ while true {
 Basic command execution:
 
 ```swift
-let channel = try ssh.exec("ls -la")
-let (stdout, stderr) = channel.readAll()
+let channel = try await ssh.exec("ls -la")
+let (stdout, stderr) = try await channel.readAll()
 ```
 
 Command execution with input:
 
 ```swift
 let stdin = Pipe()
-let channel = try ssh.exec("/bin/sh -s", stdin: stdin)
-let (stdout, stderr) = channel.readAll()
+let channel = try await ssh.exec("/bin/sh -s")
+try await channel.writeAll(stdin)
+let (stdout, stderr) = try await channel.readAll()
 ```
 
 With stdout and stderr pipes:
@@ -102,9 +103,6 @@ stderr.fileHandleForReading.readabilityHandler = {
     }
 }
 
-let channel = try ssh.exec("apt update")
-try channel.readAll(
-    stdout: stdout,
-    stderr: stderr
-)
+let channel = try await ssh.exec("apt update")
+try await channel.readAll(stdout, stderr)
 ```

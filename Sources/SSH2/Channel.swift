@@ -57,8 +57,9 @@ public class Channel {
     }
 
     // read reads data from the channel.
-    // 0 to read from stdout.
-    // 1 to read from stderr.
+    // streamId:
+    // - 0 - read from stdout.
+    // - 1 - read from stderr.
     public func read(_ streamId: Int32) async throws -> Data {
         let result = await session.call {
             self.readBuffer.withUnsafeMutableBufferPointer {
@@ -121,6 +122,11 @@ public class Channel {
         )
     }
 
+    // write writes data to the channel.
+    // streamId:
+    // - 0 - write to stdin/stdout.
+    // - 1 - write to stderr.
+    // returns the number of bytes written.
     public func write(_ data: Data, _ streamId: Int32) async throws -> Int {
         let result = await session.call {
             data.withUnsafeBytes {
@@ -173,6 +179,8 @@ public class Channel {
         try await sendEof()
     }
 
+    // sendEof sends EOF to the channel.
+    // if no data needs to be sent to the channel, call this function.
     public func sendEof() async throws {
         let result = await session.call {
             libssh2_channel_send_eof(self.rawPointer)
