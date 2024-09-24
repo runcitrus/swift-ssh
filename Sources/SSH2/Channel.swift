@@ -149,13 +149,24 @@ public class Channel {
         }
     }
 
-    public func writeAll(_ stdin: Pipe) async throws {
-        let fileHandle = stdin.fileHandleForReading
+    public func writeAll(_ data: Data) async throws {
+        var block = data
 
+        while !block.isEmpty {
+            let chunkSize = min(0x4000, block.count)
+            let chunk = block.prefix(chunkSize)
+            let sent = try await write(chunk, 0)
+            block = block.dropFirst(sent)
+        }
+
+        try await sendEof()
+    }
+
+    public func writeAll(_ stdin: FileHandle) async throws {
         let stream = AsyncStream {
             continuation in
 
-            fileHandle.readabilityHandler = {
+            stdin.readabilityHandler = {
                 let data = $0.availableData
 
                 if !data.isEmpty {

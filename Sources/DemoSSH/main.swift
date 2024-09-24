@@ -58,7 +58,7 @@ func exec(
     let channel = try await ssh.exec("/bin/sh -s")
 
     let tw = Task {
-        try await channel.writeAll(stdin)
+        try await channel.writeAll(stdin.fileHandleForReading)
     }
 
     let tr = Task {

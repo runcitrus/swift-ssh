@@ -75,19 +75,26 @@ let channel = try await ssh.exec("ls -la")
 let (stdout, stderr) = try await channel.readAll()
 ```
 
-Command execution with input:
+Writing data to the command stdin:
+
+```swift
+let script = "date"
+let data = script.data(using: .utf8)!
+let channel = try await ssh.exec("/bin/sh -s")
+try await channel.writeAll(data)
+```
+
+Writing from file to the command stdin:
 
 ```swift
 let stdin = Pipe()
 let channel = try await ssh.exec("/bin/sh -s")
-try await channel.writeAll(stdin)
-let (stdout, stderr) = try await channel.readAll()
+try await channel.writeAll(stdin.fileHandleForReading)
 ```
 
-With stdout and stderr handlers:
+Reading data from command with handlers:
 
 ```swift
-let channel = try await ssh.exec("apt update")
 try await channel.readAll(
     stdoutHandler: {
         if let text = String(data: $0, encoding: .utf8) {
@@ -100,4 +107,10 @@ try await channel.readAll(
         }
     }
 )
+```
+
+Reading data from command to string:
+
+```swift
+let (stdout, stderr) = try await channel.readAll()
 ```
