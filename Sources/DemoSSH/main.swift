@@ -71,13 +71,18 @@ func exec(
         }
     }
 
-    let channel = try await ssh.exec("/bin/sh -s", stdin: stdin)
+    let channel = try await ssh.exec("/bin/sh -s")
 
-    let t1 = Task {
+    let tw = Task {
+        try await channel.writeAll(stdin)
+    }
+
+    let tr = Task {
         try await channel.readAll(stdout, stderr)
     }
 
-    try await t1.value
+    try await tw.value
+    try await tr.value
 }
 
 func main() async {

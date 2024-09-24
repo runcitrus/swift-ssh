@@ -121,47 +121,64 @@ public class Channel {
         )
     }
 
-    public func write(_ data: Data) throws {
-        if data.count == 0 {
-            return
-        }
-
-        let rc = data.withUnsafeBytes {
-            guard let ptr = $0.baseAddress else {
-                return 0
-            }
-
-            var offset = 0
-
-            repeat {
-                let size = min(0x4000, data.count - offset)
-                let rc = libssh2_channel_write_ex(
-                    rawPointer,
-                    0,
-                    ptr.advanced(by: offset),
-                    size
+    public func write(_ data: Data, _ streamId: Int32) async throws -> Int {
+        let result = await session.call {
+            data.withUnsafeBytes {
+                libssh2_channel_write_ex(
+                    self.rawPointer,
+                    streamId,
+                    $0.baseAddress,
+                    data.count
                 )
-                if rc == -1 {
-                    return -1
-                }
-
-                offset += rc
-            } while offset < data.count
-
-            return offset
+            }
         }
 
-        guard rc >= 0 else {
-            let msg = session.getLastErrorMessage()
-            throw SSH2Error.channelWriteFailed(msg)
+        switch result {
+        case .success(let size):
+            return size
+        case .failure(_, let msg):
+            throw SSH2Error.channelReadFailed(msg)
         }
     }
 
-    public func sendEof() throws {
-        let rc = libssh2_channel_send_eof(rawPointer)
+    public func writeAll(_ stdin: Pipe) async throws {
+        let fileHandle = stdin.fileHandleForReading
 
-        guard rc == LIBSSH2_ERROR_NONE else {
-            let msg = session.getLastErrorMessage()
+        let stream = AsyncStream {
+            continuation in
+
+            fileHandle.readabilityHandler = {
+                let data = $0.availableData
+
+                if !data.isEmpty {
+                    continuation.yield(data)
+                } else {
+                    continuation.finish()
+                    $0.readabilityHandler = nil
+                }
+            }
+        }
+
+        for try await data in stream {
+            var block = data
+
+            while !block.isEmpty {
+                let chunkSize = min(0x4000, block.count)
+                let chunk = block.prefix(chunkSize)
+                let sent = try await write(chunk, 0)
+                block = block.dropFirst(sent)
+            }
+        }
+
+        try await sendEof()
+    }
+
+    public func sendEof() async throws {
+        let result = await session.call {
+            libssh2_channel_send_eof(self.rawPointer)
+        }
+
+        if case .failure(_, let msg) = result {
             throw SSH2Error.channelWriteFailed(msg)
         }
     }
