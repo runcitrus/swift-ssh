@@ -14,7 +14,7 @@ func exec(
     username: String,
     auth: SSH2AuthMethod? = nil
 ) async throws {
-    let ssh = try SSH2.connect(
+    let ssh = try await SSH2.connect(
         host,
         port: port,
         banner: "SSH-2.0-libssh2_Citrus.app"
@@ -23,7 +23,7 @@ func exec(
     if var auth = auth {
         while true {
             do {
-                try ssh.auth(username, auth)
+                try await ssh.auth(username, auth)
                 break
             } catch {
                 if case SSH2Error.authFailed(-16, _) = error {
@@ -71,10 +71,10 @@ func exec(
         }
     }
 
-    let channel = try ssh.exec("/bin/sh -s", stdin: stdin)
+    let channel = try await ssh.exec("/bin/sh -s", stdin: stdin)
 
     let t1 = Task {
-        try channel.readAll(stdout, stderr)
+        try await channel.readAll(stdout, stderr)
     }
 
     try await t1.value

@@ -5,11 +5,15 @@ public struct SSH2 {
         _ host: String,
         port: Int32 = 22,
         banner: String? = nil
-    ) throws -> Session {
-        return try Session(
+    ) async throws -> Session {
+        let session = try Session(
             host: host,
             port: port,
             banner: banner
         )
+
+        try await session.handshake()
+
+        return session
     }
 }

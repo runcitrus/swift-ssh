@@ -5,9 +5,9 @@ public extension Session {
     func exec(
         _ command: String,
         stdin: Pipe? = nil
-    ) throws -> Channel {
-        let channel = try Channel(self)
-        try channel.process(command, request: "exec")
+    ) async throws -> Channel {
+        let channel = try await Channel(self)
+        try await channel.process(command, request: "exec")
 
         if let stdin = stdin {
             stdin.fileHandleForReading.readabilityHandler = {
