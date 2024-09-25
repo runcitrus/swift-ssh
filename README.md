@@ -114,3 +114,17 @@ Reading data from command to string:
 ```swift
 let (stdout, stderr) = try await channel.readAll()
 ```
+
+### Cancel task
+
+You may cancel task any time:
+
+```swift
+let task = Task {
+    let (stdout, stderr) = try await channel.readAll()
+}
+
+task.cancel()
+```
+
+Executed process will keep running on the server side.

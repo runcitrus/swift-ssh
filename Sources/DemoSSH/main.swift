@@ -61,12 +61,6 @@ func exec(
         )
     }
 
-    Task {
-        try await Task.sleep(for: .seconds(3))
-        print("cancel task")
-        tr.cancel()
-    }
-
     try await tr.value
 }
 
