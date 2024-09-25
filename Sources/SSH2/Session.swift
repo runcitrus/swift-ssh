@@ -150,7 +150,7 @@ public class Session {
                 do {
                     try await wait()
                 } catch {
-                    return .failure(0, "task cancelled")
+                    return .failure(-1001, "task cancelled")
                 }
             } else {
                 let msg = getLastErrorMessage()
@@ -170,7 +170,7 @@ public class Session {
                 do {
                     try await wait()
                 } catch {
-                    return .failure(0, "task cancelled")
+                    return .failure(-1001, "task cancelled")
                 }
             } else {
                 let msg = getLastErrorMessage()
@@ -205,10 +205,6 @@ public class Session {
                         )
 
                         source.setEventHandler {
-                            if Task.isCancelled {
-                                print("task is cancelled")
-                            }
-
                             source.cancel()
                             continuation.resume()
                         }
@@ -223,10 +219,6 @@ public class Session {
                         )
 
                         source.setEventHandler {
-                            if Task.isCancelled {
-                                print("task is cancelled")
-                            }
-
                             source.cancel()
                             continuation.resume()
                         }
