@@ -6,6 +6,97 @@ enum SSH2Result<T> {
     case failure(Int32, String)
 }
 
+// Source: https://forums.swift.org/t/automatically-cancelling-continuations/72960/9
+public final class CancellableCheckedContinuation<T> : @unchecked Sendable {
+    private var continuation: CheckedContinuation<T, any Error>?
+    private let lock = NSLock()
+    private var cancelled: Bool = false
+    private var onCancel: (@Sendable () -> Void)?
+
+    init() {
+    }
+
+    @available(iOS 13, *)
+    public func setContinuation(_ continuation: CheckedContinuation<T, any Error>) -> Bool {
+        var alreadyCancelled = false
+        lock.withLock {
+            if cancelled {
+                alreadyCancelled = true
+            } else {
+                self.continuation = continuation
+            }
+        }
+        if alreadyCancelled {
+            continuation.resume(throwing: CancellationError())
+        }
+        return !alreadyCancelled
+    }
+
+    public func onCancel(_ action: @Sendable @escaping ()->Void) {
+        var alreadyCancelled = false
+        lock.withLock {
+            if cancelled {
+                alreadyCancelled = true
+            } else {
+                self.onCancel = action
+            }
+        }
+        if alreadyCancelled {
+            action()
+        }
+    }
+
+    private func onContinuation(cancelled: Bool = false, _ action: (CheckedContinuation<T, any Error>) -> Void) {
+        var safeContinuation: CheckedContinuation<T, any Error>?
+        var safeOnCancel: (@Sendable () -> Void)?
+        lock.withLock {
+            self.cancelled = self.cancelled || cancelled
+            safeContinuation = continuation
+            safeOnCancel = onCancel
+            continuation = nil
+            onCancel = nil
+        }
+        if let safeContinuation {
+            action(safeContinuation)
+        }
+        if cancelled {
+            safeOnCancel?()
+        }
+    }
+
+    public func resume(returning value: T) {
+        onContinuation {
+            $0.resume(returning: value)
+        }
+    }
+
+    public func resume(throwing error: Error) {
+        onContinuation {
+            $0.resume(throwing: error)
+        }
+    }
+
+    public var isCancelled: Bool {
+        var cancelled: Bool = false
+        lock.withLock {
+            cancelled = self.cancelled
+        }
+        return cancelled
+    }
+
+    func cancel() {
+        onContinuation(cancelled: true) {
+            $0.resume(throwing: CancellationError())
+        }
+    }
+}
+
+extension CancellableCheckedContinuation where T == Void {
+    public func resume() {
+        self.resume(returning: ())
+    }
+}
+
 public class Session {
     private let sock: Socket
     let rawPointer: OpaquePointer
@@ -56,7 +147,11 @@ public class Session {
             if rc >= 0 {
                 return .success(rc)
             } else if rc == LIBSSH2_ERROR_EAGAIN {
-                await wait()
+                do {
+                    try await wait()
+                } catch {
+                    return .failure(0, "task cancelled")
+                }
             } else {
                 let msg = getLastErrorMessage()
                 return .failure(Int32(rc), msg)
@@ -72,7 +167,11 @@ public class Session {
 
             let rc = libssh2_session_last_errno(rawPointer)
             if rc == LIBSSH2_ERROR_EAGAIN {
-                await wait()
+                do {
+                    try await wait()
+                } catch {
+                    return .failure(0, "task cancelled")
+                }
             } else {
                 let msg = getLastErrorMessage()
                 return .failure(rc, msg)
@@ -80,44 +179,66 @@ public class Session {
         }
     }
 
-    internal func wait() async {
-        await withCheckedContinuation {
-            (continuation: CheckedContinuation<Void, Never>) in
+    internal func wait() async throws {
+        let cancellableContinuation = CancellableCheckedContinuation<Void>()
 
-            let dir = libssh2_session_block_directions(rawPointer)
+        try await withTaskCancellationHandler(
+            operation: {
+                try await withCheckedThrowingContinuation {
+                    (continuation: CheckedContinuation<Void, any Error>) in
 
-            if dir == 0 {
-                continuation.resume()
-                return
-            }
+                    guard cancellableContinuation.setContinuation(continuation) else {
+                        return
+                    }
 
-            if (dir & LIBSSH2_SESSION_BLOCK_INBOUND) != 0 {
-                let source = DispatchSource.makeReadSource(
-                    fileDescriptor: sock.fd,
-                    queue: queue
-                )
+                    let dir = libssh2_session_block_directions(rawPointer)
 
-                source.setEventHandler {
-                    source.cancel()
-                    continuation.resume()
+                    if dir == 0 {
+                        continuation.resume()
+                        return
+                    }
+
+                    if (dir & LIBSSH2_SESSION_BLOCK_INBOUND) != 0 {
+                        let source = DispatchSource.makeReadSource(
+                            fileDescriptor: sock.fd,
+                            queue: queue
+                        )
+
+                        source.setEventHandler {
+                            if Task.isCancelled {
+                                print("task is cancelled")
+                            }
+
+                            source.cancel()
+                            continuation.resume()
+                        }
+
+                        source.resume()
+                    }
+
+                    if (dir & LIBSSH2_SESSION_BLOCK_OUTBOUND) != 0 {
+                        let source = DispatchSource.makeWriteSource(
+                            fileDescriptor: sock.fd,
+                            queue: queue
+                        )
+
+                        source.setEventHandler {
+                            if Task.isCancelled {
+                                print("task is cancelled")
+                            }
+
+                            source.cancel()
+                            continuation.resume()
+                        }
+
+                        source.resume()
+                    }
                 }
+            },
 
-                source.resume()
+            onCancel: {
+                cancellableContinuation.cancel()
             }
-
-            if (dir & LIBSSH2_SESSION_BLOCK_OUTBOUND) != 0 {
-                let source = DispatchSource.makeWriteSource(
-                    fileDescriptor: sock.fd,
-                    queue: queue
-                )
-
-                source.setEventHandler {
-                    source.cancel()
-                    continuation.resume()
-                }
-
-                source.resume()
-            }
-        }
+        )
     }
 }

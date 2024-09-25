@@ -39,27 +39,12 @@ func exec(
         }
     }
 
-    let stdin = Pipe()
-    Task {
-        let data = [
-            "echo \"1\" >&1",
-            "sleep 1",
-            "echo \"2\" >&2",
-            "sleep 1",
-            "echo \"3\" >&1",
-            "sleep 1",
-            "echo \"4\" >&2"
-        ].joined(separator: "\n").data(using: .utf8)!
-
-        stdin.fileHandleForWriting.write(data)
-        stdin.fileHandleForWriting.closeFile()
-    }
-
     let channel = try await ssh.exec("/bin/sh -s")
 
-    let tw = Task {
-        try await channel.writeAll(stdin.fileHandleForReading)
-    }
+    let script = """
+        sleep 33
+    """
+    try await channel.writeAll(script.data(using: .utf8)!)
 
     let tr = Task {
         try await channel.readAll(
@@ -76,7 +61,12 @@ func exec(
         )
     }
 
-    try await tw.value
+    Task {
+        try await Task.sleep(for: .seconds(3))
+        print("cancel task")
+        tr.cancel()
+    }
+
     try await tr.value
 }
 
