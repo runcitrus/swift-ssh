@@ -15,39 +15,24 @@ let package = Package(
         .target(
             name: "SSH2",
             dependencies: [
-                "CLibcrypto",
-                "CLibz",
                 "CLibssh2",
             ],
             cSettings: [
                 .unsafeFlags([
-                    "-I/opt/homebrew/opt/openssl/include",
-                    "-I/opt/homebrew/opt/zlib/include",
-                    "-I/opt/homebrew/opt/libssh2/include",
+                    "-I./Contrib/include",
                 ])
             ],
             linkerSettings: [
                 .unsafeFlags([
                     "-Xlinker", "-force_load",
-                    "-Xlinker", "/opt/homebrew/opt/openssl/lib/libcrypto.a",
-                    "-Xlinker", "/opt/homebrew/opt/zlib/lib/libz.a",
-                    "-Xlinker", "/opt/homebrew/opt/libssh2/lib/libssh2.a",
+                    "-Xlinker", "./Contrib/lib/libcrypto.a",
+                    "-Xlinker", "./Contrib/lib/libssh2.a",
                 ]),
             ]
         ),
         .executableTarget(
             name: "DemoSSH",
             dependencies: ["SSH2", "CLibssh2"]
-        ),
-        .systemLibrary(
-            name: "CLibcrypto",
-            pkgConfig: nil,
-            providers: []
-        ),
-        .systemLibrary(
-            name: "CLibz",
-            pkgConfig: nil,
-            providers: []
         ),
         .systemLibrary(
             name: "CLibssh2",

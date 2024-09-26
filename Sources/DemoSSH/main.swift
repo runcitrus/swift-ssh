@@ -42,7 +42,7 @@ func exec(
     let channel = try await ssh.exec("/bin/sh -s")
 
     let script = """
-        sleep 33
+        ls -la
     """
     try await channel.writeAll(script.data(using: .utf8)!)
 

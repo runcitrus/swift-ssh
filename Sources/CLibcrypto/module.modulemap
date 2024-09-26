@@ -1,4 +1,0 @@
-module CLibcrypto [system] {
-    header "shim.h"
-    export *
-}
