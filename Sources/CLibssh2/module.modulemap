@@ -1,4 +1,4 @@
 module CLibssh2 [system] {
-    header "shim.h"
+    header "../../Contrib/include/libssh2.h"
     export *
 }
