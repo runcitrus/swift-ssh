@@ -33,7 +33,7 @@ build() {
         -DBUILD_SHARED_LIBS=OFF \
         -DBUILD_EXAMPLES=OFF \
         -DBUILD_TESTING=OFF \
-        -DCRYPTO_BACKEND=mbedTLS \
+        -DCRYPTO_BACKEND=OpenSSL \
         ..
     make
 
