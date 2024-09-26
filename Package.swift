@@ -17,27 +17,21 @@ let package = Package(
             dependencies: [
                 "CLibssh2",
             ],
-            cSettings: [
-                .unsafeFlags([
-                    "-I./Contrib/include",
-                ])
-            ],
             linkerSettings: [
                 .unsafeFlags([
-                    "-Xlinker", "-force_load",
                     "-Xlinker", "./Contrib/lib/libcrypto.a",
                     "-Xlinker", "./Contrib/lib/libssh2.a",
                 ]),
             ]
         ),
-        .executableTarget(
-            name: "DemoSSH",
-            dependencies: ["SSH2", "CLibssh2"]
-        ),
         .systemLibrary(
             name: "CLibssh2",
             pkgConfig: nil,
             providers: []
+        ),
+        .executableTarget(
+            name: "DemoSSH",
+            dependencies: ["SSH2"]
         ),
     ]
 )
