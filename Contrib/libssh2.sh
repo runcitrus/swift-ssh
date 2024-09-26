@@ -9,17 +9,8 @@ LIBSSH2="libssh2-1.11.0"
 curl -sL https://github.com/libssh2/libssh2/releases/download/$LIBSSH2/$LIBSSH2.tar.gz | tar -zxf -
 cd $LIBSSH2
 
-prepare() {
-    ARCH=$1
-
-    mkdir -p ../include
-    mkdir -p ../lib/$ARCH
-
-    cp -r include/* ../include
-}
-
-prepare arm64
-prepare x86_64
+mkdir -p ../{include,lib}
+cp -r include/* ../include
 
 build() {
     ARCH=$1

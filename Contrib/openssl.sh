@@ -6,7 +6,7 @@ cd `dirname $0`
 
 OPENSSL="openssl-3.3.2"
 
-# curl -sL https://github.com/openssl/openssl/releases/download/$OPENSSL/$OPENSSL.tar.gz | tar -zxf -
+curl -sL https://github.com/openssl/openssl/releases/download/$OPENSSL/$OPENSSL.tar.gz | tar -zxf -
 cd $OPENSSL
 
 mkdir -p ../{include,lib}
@@ -37,8 +37,8 @@ build arm64
 build x86_64
 
 cd ..
-# rm -rf $OPENSSL
+rm -rf $OPENSSL
 
 cd lib
 lipo -create libcrypto_x86_64.a libcrypto_arm64.a -output libcrypto.a
-# rm libcrypto_x86_64.a libcrypto_arm64.a
+rm libcrypto_x86_64.a libcrypto_arm64.a
