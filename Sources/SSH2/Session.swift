@@ -1,5 +1,5 @@
 import Foundation
-import CLibssh2
+import Clibssh2
 
 enum SSH2Result<T> {
     case success(T)

@@ -1,4 +1,4 @@
-import CLibssh2
+import Clibssh2
 
 public enum SSH2Error: Error {
     case connectFailed(String)

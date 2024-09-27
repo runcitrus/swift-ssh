@@ -1,4 +1,4 @@
-import CLibssh2
+import Clibssh2
 
 public struct SSH2 {
     public static func connect(

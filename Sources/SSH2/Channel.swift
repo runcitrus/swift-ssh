@@ -1,5 +1,5 @@
 import Foundation
-import CLibssh2
+import Clibssh2
 
 public class Channel {
     private let session: Session

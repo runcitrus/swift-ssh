@@ -1,5 +1,5 @@
 import Foundation
-import CLibssh2
+import Clibssh2
 
 public extension Session {
     func exec(_ command: String) async throws -> Channel {

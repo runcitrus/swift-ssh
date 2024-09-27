@@ -1,4 +1,4 @@
-import CLibssh2
+import Clibssh2
 
 class Socket {
     public var fd: Int32
