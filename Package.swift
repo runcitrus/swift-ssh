@@ -9,7 +9,6 @@ let package = Package(
     ],
     products: [
         .library(name: "SSH2", targets: ["SSH2"]),
-        .executable(name: "DemoSSH", targets: ["DemoSSH"]),
     ],
     targets: [
         .target(
@@ -18,10 +17,6 @@ let package = Package(
                 "Clibcrypto",
                 "Clibssh2",
             ]
-        ),
-        .executableTarget(
-            name: "DemoSSH",
-            dependencies: ["SSH2"]
         ),
         .binaryTarget(
             name: "Clibssh2",
