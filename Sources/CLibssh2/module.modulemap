@@ -1,4 +1,7 @@
 module CLibssh2 [system] {
-    header "../../Contrib/include/libssh2.h"
+    header "include/libssh2.h"
+    header "include/libssh2_sftp.h"
+    header "include/libssh2_publickey.h"
+
     export *
 }

@@ -19,8 +19,8 @@ let package = Package(
             ],
             linkerSettings: [
                 .unsafeFlags([
-                    "-Xlinker", "./Contrib/lib/libcrypto.a",
-                    "-Xlinker", "./Contrib/lib/libssh2.a",
+                    "-Xlinker", "./Sources/CLibssh2/lib/libcrypto.a",
+                    "-Xlinker", "./Sources/CLibssh2/lib/libssh2.a",
                 ]),
             ]
         ),
